@@ -1,0 +1,627 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BOMx Compare Tool</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f5; color: #333; font-size: 14px; }
+
+    .header { background: linear-gradient(135deg, #004d40 0%, #00695c 100%); color: white; padding: 18px 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: space-between; }
+    .header h1 { font-size: 22px; font-weight: 700; }
+    .header p  { font-size: 13px; opacity: 0.75; margin-top: 3px; }
+    .btn-home  { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: white; padding: 7px 14px; border-radius: 6px; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; transition: background .2s; }
+    .btn-home:hover { background: rgba(255,255,255,0.22); }
+    .btn-admin { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 7px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; transition: background .2s; }
+    .btn-admin:hover { background: rgba(255,255,255,0.25); }
+
+    .loading { display: none; text-align: center; padding: 80px 20px; }
+    .loading-spinner { width: 48px; height: 48px; border: 5px solid #e0e0e0; border-top-color: #00695c; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 20px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .no-data-msg { display: none; text-align: center; padding: 80px 20px; }
+
+    .stats-bar { background: #00695c; color: white; padding: 10px 20px; display: flex; flex-wrap: wrap; gap: 24px; font-size: 13px; }
+    .stat { display: flex; gap: 6px; align-items: center; }
+    .stat-val { font-weight: 700; font-size: 15px; }
+
+    .legend { padding: 8px 16px; background: #fafefe; border-bottom: 1px solid #e0e0e0; font-size: 12px; color: #555; display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+    .li { display: flex; align-items: center; gap: 5px; }
+    .ld { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+
+    .filter-bar { background: #fff; padding: 10px 14px; display: flex; gap: 10px; align-items: center; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; justify-content: flex-end; }
+    .btn-clear  { padding: 6px 14px; border-radius: 5px; font-size: 13px; cursor: pointer; font-weight: 600; border: 1px solid #dde1f0; background: #fff; }
+    .btn-clear:hover { background: #e0f2f1; }
+    .btn-export { padding: 7px 18px; background: #2e7d32; color: #fff; border: none; border-radius: 5px; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .btn-export:hover { background: #388e3c; }
+
+    .table-wrap { overflow-x: auto; background: #fff; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead th { background: #004d40; color: #fff; padding: 9px 11px; text-align: left; white-space: nowrap; font-size: 11.5px; font-weight: 700; position: sticky; top: 0; z-index: 2; }
+    .th-f { display: block; margin-top: 5px; width: 100%; padding: 3px 6px; border: 1px solid rgba(255,255,255,0.3); border-radius: 3px; font-size: 11px; background: rgba(255,255,255,0.15); color: #fff; font-weight: normal; box-sizing: border-box; min-width: 0; }
+    .th-f::placeholder { color: rgba(255,255,255,0.55); }
+    .th-f option { color: #333; background: #fff; }
+    tbody td { padding: 6px 11px; border-bottom: 1px solid #f0f0f0; white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+    tbody tr:hover td { background: #e0f2f1 !important; }
+    tbody tr:nth-child(even) td { background: #fafefe; }
+    .tr-mixed td { border-left: 3px solid #f9a825 !important; }
+    .tr-mixed td:first-child { border-left: 3px solid #f9a825; }
+
+    /* source badges inside cells */
+    .badge-fabric { display: inline-block; padding: 1px 6px; border-radius: 8px; background: #bbdefb; color: #0d47a1; font-weight: 700; font-size: 10px; margin-left: 4px; vertical-align: middle; }
+    .badge-trim   { display: inline-block; padding: 1px 6px; border-radius: 8px; background: #ffe0b2; color: #bf360c; font-weight: 700; font-size: 10px; margin-left: 4px; vertical-align: middle; }
+
+    th.th-norm { background: #1565c0 !important; border-left: 3px solid #82b1ff; }
+    .cn-pos { color: #0d47a1; background: #bbdefb !important; font-weight: 700; }
+    .cn-neg { color: #b71c1c; background: #ffcdd2 !important; font-weight: 700; }
+    th.th-spd { background: #e65100 !important; border-left: 3px solid #ffcc80; }
+    .cs-pos { color: #bf360c; background: #ffe0b2 !important; font-weight: 700; }
+    .cs-neg { color: #b71c1c; background: #ffcdd2 !important; font-weight: 700; }
+    .c-na { color: #bdbdbd; font-style: italic; }
+
+    .pagination { display: flex; align-items: center; gap: 6px; padding: 12px 16px; background: #fff; border-top: 1px solid #e0e0e0; flex-wrap: wrap; }
+    .pg-btn { padding: 4px 10px; border: 1px solid #c5cae9; border-radius: 4px; background: #fff; cursor: pointer; font-size: 13px; min-width: 32px; text-align: center; }
+    .pg-btn:hover:not(.active) { background: #e0f2f1; }
+    .pg-btn.active { background: #004d40; color: #fff; border-color: #004d40; font-weight: 700; }
+    .pg-dots { color: #aaa; padding: 0 2px; }
+    .pg-info { font-size: 12px; color: #888; margin-left: auto; }
+
+    .footer { text-align: center; padding: 16px; font-size: 12px; color: #aaa; background: #fff; border-top: 1px solid #e0e0e0; margin-top: 2px; }
+
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal-box { background: #fff; border-radius: 14px; padding: 32px 36px; width: 320px; box-shadow: 0 8px 40px rgba(0,0,0,0.18); }
+    .modal-box h3 { font-size: 1.1rem; color: #004d40; margin-bottom: 20px; }
+    .modal-field { margin-bottom: 14px; }
+    .modal-field label { display: block; font-size: 0.8rem; font-weight: 600; color: #555; margin-bottom: 5px; }
+    .modal-field input { width: 100%; padding: 9px 12px; border: 1px solid #ddd; border-radius: 7px; font-size: 0.9rem; outline: none; }
+    .modal-field input:focus { border-color: #00695c; }
+    .modal-error { color: #c62828; font-size: 0.8rem; margin-bottom: 12px; display: none; }
+    .modal-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .btn-cancel  { background: #f5f5f5; border: none; padding: 9px 20px; border-radius: 7px; font-size: 0.88rem; cursor: pointer; color: #555; }
+    .btn-confirm { background: #004d40; border: none; padding: 9px 20px; border-radius: 7px; font-size: 0.88rem; font-weight: 700; color: white; cursor: pointer; }
+    .btn-confirm:hover { background: #00695c; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <h1>BOMx Compare</h1>
+      <p>Fabric vs Trim — critical bottleneck per style</p>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <a href="index.html" class="btn-home">&#8592; Home</a>
+      <a id="btn-back" class="btn-home" href="#">&#8592; Back</a>
+      <button class="btn-admin" id="btn-admin-btn" onclick="openLogin()">&#128274; Admin</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="login-modal">
+    <div class="modal-box">
+      <h3>&#128272; Admin Login</h3>
+      <div class="modal-field">
+        <label>Username</label>
+        <input type="text" id="login-user" autocomplete="off" placeholder="Username">
+      </div>
+      <div class="modal-field">
+        <label>Password</label>
+        <input type="password" id="login-pw" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div class="modal-error" id="login-err">Incorrect username or password.</div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeLogin()">Cancel</button>
+        <button class="btn-confirm" onclick="doLogin()">Login</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="loading-spinner"></div>
+    <div style="color:#666;font-size:15px">Loading Fabric &amp; Trim data for comparison&#8230;</div>
+  </div>
+
+  <div class="no-data-msg" id="no-data-msg"></div>
+
+  <div id="data-section" style="display:none">
+    <div class="stats-bar" id="stats-bar"></div>
+    <div class="legend">
+      <strong>How to read:</strong>
+      <span class="li">Each row = 1 style. The tighter (lower) remaining value is shown. Badge shows its source.</span>
+      <span class="li"><span class="badge-fabric">Fabric</span>&nbsp;value from Fabric</span>
+      <span class="li"><span class="badge-trim">Trim</span>&nbsp;value from Trim</span>
+      <span style="margin:0 8px;color:#ccc">|</span>
+      <span class="li"><span class="ld" style="background:#bbdefb"></span>&#8805;30 days</span>
+      <span class="li"><span class="ld" style="background:#ffcdd2"></span>&lt;30 days</span>
+      <span style="margin:0 8px;color:#ccc">|</span>
+      <span class="li"><span class="ld" style="background:#fff;border-left:3px solid #f9a825;width:14px"></span>Normal &amp; Speed from different sources</span>
+    </div>
+    <div class="filter-bar">
+      <button class="btn-clear" onclick="clearFilters()">Clear All Filters</button>
+      <button class="btn-export" onclick="exportData()">&#11015; Export to Excel</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Working Number<br><input class="th-f" id="cf-wn" type="text" placeholder="Search&#8230;" onclick="event.stopPropagation()"></th>
+            <th>Article<br><input class="th-f" id="cf-art" type="text" placeholder="Search&#8230;" onclick="event.stopPropagation()"></th>
+            <th>Season<br><select class="th-f" id="cf-sea" onclick="event.stopPropagation()"><option value="">All</option></select></th>
+            <th>Model Collection Pack<br><select class="th-f" id="cf-mcp" onclick="event.stopPropagation()"><option value="">All</option></select></th>
+            <th>T1 Factory Code<br><select class="th-f" id="cf-t1k" onclick="event.stopPropagation()"><option value="">All</option></select></th>
+            <th>T1 Country<br><select class="th-f" id="cf-t1c" onclick="event.stopPropagation()"><option value="">All</option></select></th>
+            <th class="th-norm">Remaining &#8212; Normal (days)<br>
+              <div style="display:flex;gap:4px">
+                <input class="th-f" id="cf-rnorm" type="text" placeholder="e.g. &lt;0" style="flex:1">
+                <select class="th-f" id="cf-nsrc" style="flex:0 0 60px"><option value="">All</option><option value="Fabric">Fab</option><option value="Trim">Trim</option></select>
+              </div>
+            </th>
+            <th class="th-spd">Remaining &#8212; Speed (days)<br>
+              <div style="display:flex;gap:4px">
+                <input class="th-f" id="cf-rspd" type="text" placeholder="e.g. &lt;0" style="flex:1">
+                <select class="th-f" id="cf-ssrc" style="flex:0 0 60px"><option value="">All</option><option value="Fabric">Fab</option><option value="Trim">Trim</option></select>
+              </div>
+            </th>
+          </tr>
+        </thead>
+        <tbody id="c-tbody"></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="c-page"></div>
+  </div>
+
+  <div class="footer">BOMx Compare Tool &nbsp;&#183;&nbsp; Fabric vs Trim bottleneck &nbsp;&#183;&nbsp; AD4001 (Thailand) &amp; AD4014 (Myanmar)</div>
+
+  <script>
+    var EMBEDDED_DATA = null;
+    var EMBEDDED_DATE = '';
+    var BOM_SEASON = (new URLSearchParams(window.location.search).get('season')||'SS27');
+    var ADMIN_TOKEN = 'c29waXRhLnZhOjE=';
+    var _u = atob('c29waXRhLnZh');
+    var _p = atob('MQ==');
+
+    var compareData = [];
+    var filteredC   = [];
+    var cPage = 1, CPAGE = 50, timerC = null;
+
+    var transitLookup = {
+      'myanmar|cambodia'  : 18,
+      'myanmar|china'     : 26,
+      'myanmar|hong kong' : 32,
+      'myanmar|taiwan'    : 36,
+      'myanmar|thailand'  : 18,
+      'myanmar|vietnam'   : 27,
+      'thailand|cambodia' : 28,
+      'thailand|china'    : 19,
+      'thailand|hong kong': 13,
+      'thailand|indonesia': 21,
+      'thailand|japan'    : 18,
+      'thailand|sri lanka': 28,
+      'thailand|taiwan'   : 18,
+      'thailand|vietnam'  : 17,
+      'thailand|thailand' : 2
+    };
+
+    function toNum(v){ if(v===null||v===undefined||v==='')return null; var n=parseFloat(v); return isNaN(n)?null:n; }
+    function esc(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function normC(v){
+      if(!v)return'';
+      var n=String(v).toLowerCase().trim();
+      if(n.includes('china'))return'china';
+      if(n.includes('viet'))return'vietnam';
+      if(n.includes('cambodia'))return'cambodia';
+      if(n.includes('myanmar')||n.includes('burma'))return'myanmar';
+      if(n.includes('thai'))return'thailand';
+      if(n.includes('indonesia'))return'indonesia';
+      if(n.includes('bangladesh'))return'bangladesh';
+      if(n.includes('india')&&!n.includes('indo'))return'india';
+      if(n.includes('turkey')||n.includes('türkiye'))return'turkey';
+      if(n.includes('taiwan'))return'taiwan';
+      if(n.includes('korea'))return'korea';
+      if(n.includes('pakistan'))return'pakistan';
+      if(n.includes('sri lanka'))return'sri lanka';
+      if(n.includes('hong kong')||n.includes('hongkong'))return'hong kong';
+      if(n.includes('japan'))return'japan';
+      return n;
+    }
+
+    function parseBOM(wb){
+      var ws=wb.Sheets[wb.SheetNames[0]];
+      var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+      var hIdx=0,best=0;
+      for(var i=0;i<Math.min(rows.length,15);i++){
+        var c=rows[i].filter(function(v){return v!==null;}).length;
+        if(c>best){best=c;hIdx=i;}
+      }
+      var ci={};
+      rows[hIdx].forEach(function(h,idx){if(h)ci[String(h)]=idx;});
+      function g(row,name){var idx=ci[name];return idx!==undefined?row[idx]:null;}
+      var out=[];
+      for(var i=hIdx+1;i<rows.length;i++){
+        var row=rows[i];
+        if(!row||row.every(function(v){return v===null;}))continue;
+        if(String(g(row,'T1 Factory CODE')||'')==='AD4013')continue;
+        var t1c=String(g(row,'T1 Factory Country')||'');
+        var t2c=String(g(row,'T2 Supplier Country')||'');
+        var mLT=toNum(g(row,'Material Supplier Lead Time'));
+        var sLT=toNum(g(row,'Material Supplier Speed Lead Time'));
+        var fLT=toNum(g(row,'Article Factory Leadtime'));
+        out.push({
+          wn :String(g(row,'Working Number')||''),
+          t1k:String(g(row,'T1 Factory CODE')||''),
+          t1c:t1c,
+          t2n:String(g(row,'T2 Supplier NAME')||''),
+          t2c:t2c,
+          art:String(g(row,'Article')||''),
+          sea:String(g(row,'Season')||''),
+          mcp:String(g(row,'Model Collection Pack')||''),
+          mLT:mLT,sLT:sLT,fLT:fLT
+        });
+      }
+      return out;
+    }
+
+    function buildSummaryFrom(data){
+      var grp={};
+      data.forEach(function(r){
+        if(!r.wn)return;
+        var key=r.wn+'|||'+r.t1k;
+        if(!grp[key])grp[key]=[];
+        grp[key].push(r);
+      });
+      var out=[];
+      Object.keys(grp).sort().forEach(function(key){
+        var rows=grp[key];
+        function rowT(r){
+          var d=(r.t1k==='AD4014')?'myanmar':(r.t1k==='AD4001')?'thailand':normC(r.t1c);
+          return transitLookup[d+'|'+normC(r.t2c)]||0;
+        }
+        var maxMLT=0;
+        rows.forEach(function(r){if((r.mLT||0)>maxMLT)maxMLT=(r.mLT||0);});
+        var tied=rows.filter(function(r){return(r.mLT||0)===maxMLT;});
+        var crit=tied[0];
+        for(var i=1;i<tied.length;i++){if(rowT(tied[i])>rowT(crit))crit=tied[i];}
+        var dest=(crit.t1k==='AD4014')?'myanmar':(crit.t1k==='AD4001')?'thailand':normC(crit.t1c);
+        var coo=normC(crit.t2c);
+        var tDays=transitLookup.hasOwnProperty(dest+'|'+coo)?transitLookup[dest+'|'+coo]:null;
+        var rNorm=(crit.fLT!==null&&crit.mLT!==null&&tDays!==null)?(crit.fLT-crit.mLT-tDays):null;
+        var rSpd =(crit.fLT!==null&&crit.sLT!==null&&tDays!==null)?(crit.fLT-crit.sLT-tDays):null;
+        out.push({wn:key.split('|||')[0],art:crit.art,sea:crit.sea,mcp:crit.mcp,
+          t1k:crit.t1k,t1c:crit.t1c,rNorm:rNorm,rSpd:rSpd});
+      });
+      return out;
+    }
+
+    // ── comparison: always 1 row per WN+Factory ──
+    // rNorm = min(fabNorm, trimNorm)  → normSrc shows which type provided it
+    // rSpd  = min(fabSpd,  trimSpd)   → spdSrc  shows which type provided it
+    // mixed = true when normSrc ≠ spdSrc (highlighted with amber left border)
+    function buildCompare(fabSum,trimSum){
+      var fabMap={}, trimMap={};
+      fabSum.forEach(function(r){fabMap[r.wn+'|||'+r.t1k]=r;});
+      trimSum.forEach(function(r){trimMap[r.wn+'|||'+r.t1k]=r;});
+      var allKeys={};
+      Object.keys(fabMap).forEach(function(k){allKeys[k]=1;});
+      Object.keys(trimMap).forEach(function(k){allKeys[k]=1;});
+      var out=[];
+      Object.keys(allKeys).sort().forEach(function(key){
+        var fab=fabMap[key], trim=trimMap[key];
+        var ref=fab||trim;
+
+        if(!fab){ out.push({wn:ref.wn,art:ref.art,sea:ref.sea,mcp:ref.mcp,t1k:ref.t1k,t1c:ref.t1c,
+          rNorm:trim.rNorm,normSrc:'Trim',rSpd:trim.rSpd,spdSrc:'Trim',mixed:false}); return; }
+        if(!trim){ out.push({wn:ref.wn,art:ref.art,sea:ref.sea,mcp:ref.mcp,t1k:ref.t1k,t1c:ref.t1c,
+          rNorm:fab.rNorm,normSrc:'Fabric',rSpd:fab.rSpd,spdSrc:'Fabric',mixed:false}); return; }
+
+        var fabN=fab.rNorm, trimN=trim.rNorm;
+        var fabS=fab.rSpd,  trimS=trim.rSpd;
+
+        // Normal: take the lower value (more critical/urgent)
+        var normSrc, rNorm;
+        if(fabN===null&&trimN!==null)      { normSrc='Trim';   rNorm=trimN; }
+        else if(trimN===null&&fabN!==null) { normSrc='Fabric'; rNorm=fabN; }
+        else if(fabN!==null&&trimN!==null) { normSrc=fabN<=trimN?'Fabric':'Trim'; rNorm=normSrc==='Fabric'?fabN:trimN; }
+        else                               { normSrc=null; rNorm=null; }
+
+        // Speed: take the lower value
+        var spdSrc, rSpd;
+        if(fabS===null&&trimS!==null)      { spdSrc='Trim';   rSpd=trimS; }
+        else if(trimS===null&&fabS!==null) { spdSrc='Fabric'; rSpd=fabS; }
+        else if(fabS!==null&&trimS!==null) { spdSrc=fabS<=trimS?'Fabric':'Trim'; rSpd=spdSrc==='Fabric'?fabS:trimS; }
+        else                               { spdSrc=null; rSpd=null; }
+
+        out.push({wn:ref.wn,art:ref.art,sea:ref.sea,mcp:ref.mcp,t1k:ref.t1k,t1c:ref.t1c,
+          rNorm:rNorm,normSrc:normSrc,rSpd:rSpd,spdSrc:spdSrc,
+          mixed:!!(normSrc&&spdSrc&&normSrc!==spdSrc)});
+      });
+      return out;
+    }
+
+    async function loadFromServer(){
+      var h=location.hostname;
+      var isLocal=(h==='localhost'||h==='127.0.0.1'||h.startsWith('192.168'));
+
+      if(!isLocal){
+        document.getElementById('loading').style.display='none';
+        if(typeof EMBEDDED_DATA!=='undefined'&&EMBEDDED_DATA&&EMBEDDED_DATA.length){
+          compareData=EMBEDDED_DATA;
+          filteredC=compareData.slice();
+          populateDDs();
+          applyC();
+          document.getElementById('data-section').style.display='block';
+          document.querySelector('.header p').textContent+=' — Published '+EMBEDDED_DATE;
+          if(localStorage.getItem('bomx_admin')===ADMIN_TOKEN){document.getElementById('btn-publish').style.display='block';}
+        }else{
+          document.getElementById('no-data-msg').innerHTML=
+            '<div style="font-size:36px;margin-bottom:12px">&#128202;</div>'+
+            '<div style="font-size:16px;font-weight:700;color:#555;margin-bottom:8px">No data published yet</div>'+
+            '<div style="font-size:13px">Please ask the admin to publish the latest data.</div>';
+          document.getElementById('no-data-msg').style.display='block';
+        }
+        return;
+      }
+
+      document.getElementById('loading').style.display='block';
+      document.getElementById('no-data-msg').style.display='none';
+      document.getElementById('data-section').style.display='none';
+      try{
+        var fabResp=fetch('/api/file?season='+BOM_SEASON+'&type=Fabric',{cache:'no-cache'});
+        var trimResp=fetch('/api/file?season='+BOM_SEASON+'&type=Trim',{cache:'no-cache'});
+        var fr=await fabResp, tr=await trimResp;
+        if(!fr.ok)  throw new Error('Fabric data not available for '+BOM_SEASON+'.');
+        if(!tr.ok)  throw new Error('Trim data not available for '+BOM_SEASON+'.');
+        var fabBuf=await fr.arrayBuffer(), trimBuf=await tr.arrayBuffer();
+        var fabData =parseBOM(XLSX.read(new Uint8Array(fabBuf), {type:'array'}));
+        var trimData=parseBOM(XLSX.read(new Uint8Array(trimBuf),{type:'array'}));
+        compareData=buildCompare(buildSummaryFrom(fabData),buildSummaryFrom(trimData));
+        if(!compareData.length)throw new Error('No data found for '+BOM_SEASON+'.');
+        filteredC=compareData.slice();
+        populateDDs();
+        applyC();
+        document.getElementById('loading').style.display='none';
+        document.getElementById('data-section').style.display='block';
+        if(localStorage.getItem('bomx_admin')===ADMIN_TOKEN){document.getElementById('btn-publish').style.display='block';}
+      }catch(err){
+        document.getElementById('loading').style.display='none';
+        var nm=document.getElementById('no-data-msg');
+        nm.style.display='block';
+        nm.innerHTML='<div style="font-size:36px;margin-bottom:12px">&#9888;&#65039;</div>'+
+          '<div style="font-size:16px;font-weight:700;color:#c62828;margin-bottom:8px">'+esc(err.message)+'</div>'+
+          '<div style="font-size:13px">Make sure the server is running:<br><b>http://192.168.71.138:8501/</b></div>';
+        console.error(err);
+      }
+    }
+
+    function populateDDs(){
+      fillSel('cf-sea',compareData.map(function(r){return r.sea;}));
+      fillSel('cf-mcp',compareData.map(function(r){return r.mcp;}));
+      fillSel('cf-t1k',compareData.map(function(r){return r.t1k;}));
+      fillSel('cf-t1c',compareData.map(function(r){return r.t1c;}));
+    }
+    function fillSel(id,vals){
+      var sel=document.getElementById(id);
+      while(sel.options.length>1)sel.remove(1);
+      Array.from(new Set(vals)).filter(Boolean).sort().forEach(function(v){
+        var o=document.createElement('option');o.value=o.textContent=v;sel.appendChild(o);
+      });
+    }
+
+    function matchNum(val,f){
+      if(val===null||val===undefined)return false;
+      var n=parseFloat(val);if(isNaN(n))return false;
+      f=f.trim();
+      if(f.startsWith('>='))return n>=parseFloat(f.slice(2));
+      if(f.startsWith('<='))return n<=parseFloat(f.slice(2));
+      if(f.startsWith('>')) return n> parseFloat(f.slice(1));
+      if(f.startsWith('<')) return n< parseFloat(f.slice(1));
+      if(f.startsWith('=')) return n===parseFloat(f.slice(1));
+      return String(n).includes(f);
+    }
+
+    function applyC(){
+      var wn   =document.getElementById('cf-wn').value.toLowerCase();
+      var art  =document.getElementById('cf-art').value.toLowerCase();
+      var sea  =document.getElementById('cf-sea').value;
+      var mcp  =document.getElementById('cf-mcp').value;
+      var t1k  =document.getElementById('cf-t1k').value;
+      var t1c  =document.getElementById('cf-t1c').value;
+      var rnorm=document.getElementById('cf-rnorm').value.trim();
+      var rspd =document.getElementById('cf-rspd').value.trim();
+      var nsrc =document.getElementById('cf-nsrc').value;
+      var ssrc =document.getElementById('cf-ssrc').value;
+      filteredC=compareData.filter(function(r){
+        if(wn &&!r.wn.toLowerCase().includes(wn))return false;
+        if(art&&!String(r.art||'').toLowerCase().includes(art))return false;
+        if(sea&&r.sea!==sea)return false;
+        if(mcp&&r.mcp!==mcp)return false;
+        if(t1k&&r.t1k!==t1k)return false;
+        if(t1c&&r.t1c!==t1c)return false;
+        if(rnorm&&!matchNum(r.rNorm,rnorm))return false;
+        if(rspd &&!matchNum(r.rSpd, rspd))return false;
+        if(nsrc&&r.normSrc!==nsrc)return false;
+        if(ssrc&&r.spdSrc !==ssrc)return false;
+        return true;
+      });
+      cPage=1; renderStats(); renderTable();
+    }
+
+    function clearFilters(){
+      ['cf-wn','cf-art','cf-rnorm','cf-rspd'].forEach(function(id){document.getElementById(id).value='';});
+      ['cf-sea','cf-mcp','cf-t1k','cf-t1c','cf-nsrc','cf-ssrc'].forEach(function(id){document.getElementById(id).value='';});
+      applyC();
+    }
+
+    function renderStats(){
+      var posN=filteredC.filter(function(r){return r.rNorm!==null&&r.rNorm>=30;}).length;
+      var negN=filteredC.filter(function(r){return r.rNorm!==null&&r.rNorm<30;}).length;
+      var posS=filteredC.filter(function(r){return r.rSpd!==null&&r.rSpd>=30;}).length;
+      var negS=filteredC.filter(function(r){return r.rSpd!==null&&r.rSpd<30;}).length;
+      var mixed=filteredC.filter(function(r){return r.mixed;}).length;
+      document.getElementById('stats-bar').innerHTML=
+        '<div class="stat">Styles: <span class="stat-val">'+filteredC.length.toLocaleString()+'</span> of '+compareData.length.toLocaleString()+'</div>'+
+        '<div class="stat">Normal &#8805;30: <span class="stat-val" style="color:#a5d6a7">'+posN+'</span></div>'+
+        '<div class="stat">Normal &lt;30: <span class="stat-val" style="color:#ef9a9a">'+negN+'</span></div>'+
+        '<div class="stat">Speed &#8805;30: <span class="stat-val" style="color:#a5d6a7">'+posS+'</span></div>'+
+        '<div class="stat">Speed &lt;30: <span class="stat-val" style="color:#ef9a9a">'+negS+'</span></div>'+
+        (mixed?'<div class="stat">Mixed source: <span class="stat-val" style="color:#f9a825">'+mixed+'</span></div>':'');
+    }
+
+    function rcell(v,type,src){
+      if(v===null)return'<td class="c-na">N/A</td>';
+      var p=type==='speed'?'cs':'cn';
+      var badge=src?'<span class="badge-'+(src.toLowerCase())+'">'+src+'</span>':'';
+      return'<td class="'+p+(v>=30?'-pos':'-neg')+'">'+(v>0?'+':'')+v+badge+'</td>';
+    }
+
+    function renderTable(){
+      var start=(cPage-1)*CPAGE;
+      var page=filteredC.slice(start,start+CPAGE);
+      document.getElementById('c-tbody').innerHTML=page.map(function(r){
+        return'<tr'+(r.mixed?' class="tr-mixed"':'')+'>'+
+          '<td><strong>'+esc(r.wn)+'</strong></td>'+
+          '<td>'+esc(r.art)+'</td>'+
+          '<td>'+esc(r.sea)+'</td>'+
+          '<td>'+esc(r.mcp)+'</td>'+
+          '<td>'+esc(r.t1k)+'</td>'+
+          '<td>'+esc(r.t1c)+'</td>'+
+          rcell(r.rNorm,'normal',r.normSrc)+
+          rcell(r.rSpd,'speed',r.spdSrc)+
+        '</tr>';
+      }).join('');
+      renderPag();
+    }
+
+    function renderPag(){
+      var tp=Math.ceil(filteredC.length/CPAGE);
+      var el=document.getElementById('c-page');
+      if(tp<=1){el.innerHTML='<span class="pg-info">All '+filteredC.length.toLocaleString()+' shown</span>';return;}
+      var h='';
+      if(cPage>1)h+='<button class="pg-btn" onclick="goCP('+(cPage-1)+')">&#8249;</button>';
+      var s=Math.max(1,cPage-2),e=Math.min(tp,cPage+2);
+      if(s>1)h+='<button class="pg-btn" onclick="goCP(1)">1</button>';
+      if(s>2)h+='<span class="pg-dots">&#8230;</span>';
+      for(var p=s;p<=e;p++)h+='<button class="pg-btn'+(p===cPage?' active':'')+'" onclick="goCP('+p+')">'+p+'</button>';
+      if(e<tp-1)h+='<span class="pg-dots">&#8230;</span>';
+      if(e<tp)h+='<button class="pg-btn" onclick="goCP('+tp+')">'+tp+'</button>';
+      if(cPage<tp)h+='<button class="pg-btn" onclick="goCP('+(cPage+1)+')">&#8250;</button>';
+      h+='<span class="pg-info">Page '+cPage+' of '+tp+' | '+filteredC.length.toLocaleString()+' items</span>';
+      el.innerHTML=h;
+    }
+    function goCP(p){cPage=p;renderTable();window.scrollTo(0,0);}
+
+    function exportData(){
+      var hdrs=['Working Number','Article','Season','Model Collection Pack','T1 Factory Code','T1 Country',
+        'Remaining — Normal (days)','Normal Source','Remaining — Speed (days)','Speed Source'];
+      var rows=filteredC.map(function(r){return[r.wn,r.art,r.sea,r.mcp,r.t1k,r.t1c,r.rNorm,r.normSrc,r.rSpd,r.spdSrc];});
+      var ws=XLSX.utils.aoa_to_sheet([hdrs].concat(rows));
+      ws['!cols']=[22,14,8,20,14,16,22,10,22,10].map(function(w){return{wch:w};});
+      var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Compare');
+      XLSX.writeFile(wb,'BOMx_Compare_'+BOM_SEASON+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+    }
+
+
+    // ── SAVE & PUBLISH ──────────────────────────────────────────────────────
+    async function genPublishableFile(){
+      if(!compareData.length){alert('Please wait for data to load first.');return;}
+      var date=new Date().toISOString().slice(0,10);
+      var jdata=JSON.stringify(compareData)
+        .replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026');
+
+      var src;
+      try{
+        var resp=await fetch(location.href,{cache:'no-cache'});
+        if(!resp.ok) throw new Error();
+        src=await resp.text();
+      }catch(e){
+        alert('Cannot reach this page as a URL.\nPlease open from the server: http://192.168.71.138:8501/');
+        return;
+      }
+
+      src=src.replace(/^    var EMBEDDED_DATA = .*$/m,'    var EMBEDDED_DATA = '+jdata+';');
+      src=src.replace(/^    var EMBEDDED_DATE = '[^']*';/m,'    var EMBEDDED_DATE = ''+date+'\';');
+
+      var h=location.hostname;
+      var isSrv=(h&&h!=='');
+      var isGH=(isSrv&&location.href.includes('github.io'));
+
+      if(isGH){
+        var saved=await _pushToGitHub(src,date);
+        if(saved) _pubDone(date,'Pushed to GitHub Pages');
+      } else if(isSrv){
+        try{
+          var sr=await fetch(location.origin+'/save',{
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({html:src,filename:'BOMx_Compare_Tool.html'})
+          });
+          if((await sr.json()).ok) _pubDone(date,'Saved to local server');
+          else throw new Error();
+        }catch(e){ alert('Local save failed.'); }
+      } else {
+        var blob=new Blob([src],{type:'text/html'});
+        var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+        a.download='BOMx_Compare_Tool.html'; a.click();
+        _pubDone(date,'Downloaded — replace the file manually');
+      }
+    }
+
+    async function _pushToGitHub(src,date){
+      var OWNER='sopita-123', REPO='Autoupdate', FILE='Bomx Leadtime/BOMx_Compare_Tool.html';
+      var token=localStorage.getItem('gh_pat');
+      if(!token){ token=prompt('Enter your GitHub fine-grained token:'); if(!token)return false; localStorage.setItem('gh_pat',token); }
+      var apiUrl='https://api.github.com/repos/'+OWNER+'/'+REPO+'/contents/'+encodeURIComponent(FILE).replace(/%2F/g,'/');
+      var headers={'Authorization':'token '+token,'Content-Type':'application/json','Accept':'application/vnd.github+json'};
+      var shaResp=await fetch(apiUrl,{headers:headers});
+      if(!shaResp.ok){alert('GitHub API error: '+shaResp.status);return false;}
+      var sha=(await shaResp.json()).sha;
+      var content=btoa(unescape(encodeURIComponent(src)));
+      var put=await fetch(apiUrl,{method:'PUT',headers:headers,body:JSON.stringify({message:'Publish Compare results '+date,content:content,sha:sha})});
+      if(!put.ok){var e=await put.json();alert('GitHub push failed: '+(e.message||put.status));return false;}
+      return true;
+    }
+
+    function _pubDone(date,msg){
+      document.querySelector('.header p').textContent+='  |  Data updated: '+date;
+      alert('✓ Published! ('+msg+')');
+    }
+
+    function openLogin(){
+      document.getElementById('login-user').value='';
+      document.getElementById('login-pw').value='';
+      document.getElementById('login-err').style.display='none';
+      document.getElementById('login-modal').classList.add('open');
+      setTimeout(function(){document.getElementById('login-user').focus();},100);
+    }
+    function closeLogin(){ document.getElementById('login-modal').classList.remove('open'); }
+    function doLogin(){
+      var u=document.getElementById('login-user').value.trim();
+      var p=document.getElementById('login-pw').value;
+      if(u===_u&&p===_p){
+        closeLogin();
+        document.getElementById('btn-admin-btn').textContent='🔓 Admin';
+        localStorage.setItem('bomx_admin',ADMIN_TOKEN);
+      } else {
+        document.getElementById('login-err').style.display='block';
+        document.getElementById('login-pw').value='';
+        document.getElementById('login-pw').focus();
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', async function(){
+      document.querySelector('.header h1').textContent += ' — ' + BOM_SEASON;
+      document.getElementById('btn-back').href = 'index.html?season=' + BOM_SEASON;
+      ['cf-wn','cf-art','cf-rnorm','cf-rspd'].forEach(function(id){
+        document.getElementById(id).addEventListener('input',function(){clearTimeout(timerC);timerC=setTimeout(applyC,300);});
+      });
+      ['cf-sea','cf-mcp','cf-t1k','cf-t1c','cf-nsrc','cf-ssrc'].forEach(function(id){
+        document.getElementById(id).addEventListener('change',applyC);
+      });
+      await loadFromServer();
+      if(localStorage.getItem('bomx_admin')===ADMIN_TOKEN){
+        document.getElementById('btn-admin-btn').textContent='🔓 Admin';
+      }
+    });
+  </script>
+
+</body>
+</html>

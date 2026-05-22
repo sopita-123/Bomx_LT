@@ -1,0 +1,519 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BOMx Leadtime Tool</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #e8eaf6 0%, #f5f5f5 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    /* ── Admin bar (top-right, fixed) ── */
+    .admin-bar {
+      position: fixed;
+      top: 16px;
+      right: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 100;
+    }
+    .admin-badge {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      background: #e8f5e9;
+      border: 1px solid #a5d6a7;
+      color: #2e7d32;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 5px 12px;
+      border-radius: 20px;
+    }
+    .admin-badge.visible { display: flex; }
+    .btn-admin-bar {
+      background: rgba(26,35,126,0.08);
+      border: 1px solid rgba(26,35,126,0.2);
+      color: #3949ab;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-admin-bar:hover { background: rgba(26,35,126,0.15); }
+    .btn-signout {
+      display: none;
+      background: none;
+      border: 1px solid #e57373;
+      color: #c62828;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-signout:hover { background: #ffebee; }
+    .btn-signout.visible { display: block; }
+
+    /* ── Header ── */
+    .header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    .logo {
+      font-size: 2.6rem;
+      font-weight: 800;
+      color: #1a237e;
+      letter-spacing: -1px;
+    }
+    .logo span { color: #5c6bc0; }
+    .subtitle { margin-top: 8px; font-size: 1rem; color: #666; }
+
+    /* ── Breadcrumb ── */
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: #888;
+      margin-bottom: 20px;
+      min-height: 24px;
+      justify-content: center;
+    }
+    .crumb-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #5c6bc0;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: background 0.15s;
+    }
+    .crumb-btn:hover { background: #e8eaf6; }
+    .crumb-current { font-weight: 700; color: #1a237e; }
+    .sep { color: #ccc; }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #9e9e9e;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    /* ── Views ── */
+    .view { display: none; flex-direction: column; align-items: center; }
+    .view.active { display: flex; }
+
+    /* ── Cards ── */
+    .cards { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 36px 44px;
+      text-align: center;
+      cursor: pointer;
+      text-decoration: none;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+      border: 2px solid transparent;
+      min-width: 170px;
+    }
+    .card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 12px 32px rgba(26,35,126,0.15);
+      border-color: #5c6bc0;
+    }
+    .card.current { border-color: #1a237e; background: #f0f2ff; }
+    .card.archived .season { color: #9e9e9e; }
+    .season { font-size: 2rem; font-weight: 800; color: #1a237e; letter-spacing: 1px; }
+    .card-date { font-size: 0.78rem; color: #aaa; margin-top: 6px; }
+
+    .badge {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 3px 12px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .badge-current  { background: #c8e6c9; color: #2e7d32; }
+    .badge-archived { background: #f5f5f5;  color: #bdbdbd; }
+
+    /* ── Type cards ── */
+    .type-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 32px 48px;
+      text-align: center;
+      cursor: pointer;
+      text-decoration: none;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+      border: 2px solid transparent;
+      min-width: 160px;
+    }
+    .type-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 12px 32px rgba(26,35,126,0.15);
+      border-color: #5c6bc0;
+    }
+    .type-icon { font-size: 2rem; }
+    .type-name { font-size: 1.2rem; font-weight: 700; color: #1a237e; margin-top: 10px; }
+    .type-desc { font-size: 0.78rem; color: #aaa; margin-top: 4px; }
+
+    /* ── Modal overlay ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: #fff;
+      border-radius: 14px;
+      padding: 32px 36px;
+      width: 320px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+    }
+    .modal-box h3 { font-size: 1.1rem; color: #1a237e; margin-bottom: 20px; }
+    .modal-field { margin-bottom: 14px; }
+    .modal-field label { display: block; font-size: 0.8rem; font-weight: 600; color: #555; margin-bottom: 5px; }
+    .modal-field input {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid #ddd;
+      border-radius: 7px;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .modal-field input:focus { border-color: #5c6bc0; }
+    .modal-error { color: #c62828; font-size: 0.8rem; margin-bottom: 12px; display: none; }
+    .modal-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .btn-cancel {
+      background: #f5f5f5;
+      border: none;
+      padding: 9px 20px;
+      border-radius: 7px;
+      font-size: 0.88rem;
+      cursor: pointer;
+      color: #555;
+    }
+    .btn-cancel:hover { background: #e0e0e0; }
+    .btn-confirm {
+      background: #1a237e;
+      border: none;
+      padding: 9px 20px;
+      border-radius: 7px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: white;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-confirm:hover { background: #283593; }
+
+    /* ── Footer ── */
+    .footer { margin-top: 52px; font-size: 0.78rem; color: #bbb; text-align: center; }
+
+    /* ── Password screen ── */
+    #pw-screen {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(135deg, #e8eaf6 0%, #f5f5f5 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .pw-logo { font-size: 2.6rem; font-weight: 800; color: #1a237e; letter-spacing: -1px; margin-bottom: 8px; }
+    .pw-logo span { color: #5c6bc0; }
+    .pw-subtitle { font-size: 1rem; color: #666; margin-bottom: 36px; }
+    .pw-box {
+      background: #fff;
+      border-radius: 16px;
+      padding: 36px 40px;
+      width: 340px;
+      box-shadow: 0 4px 24px rgba(26,35,126,0.12);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .pw-box label { font-size: 0.82rem; font-weight: 700; color: #555; margin-bottom: 10px; align-self: flex-start; }
+    .pw-box input {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid #ddd;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.15s;
+      margin-bottom: 8px;
+    }
+    .pw-box input:focus { border-color: #5c6bc0; }
+    .pw-error { color: #c62828; font-size: 0.8rem; margin-bottom: 12px; display: none; align-self: flex-start; }
+    .pw-btn {
+      width: 100%;
+      background: #1a237e;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: white;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-top: 6px;
+    }
+    .pw-btn:hover { background: #283593; }
+  </style>
+</head>
+<body>
+
+  <!-- Password screen -->
+  <div id="pw-screen">
+    <div class="pw-logo">BOM<span>x</span> Leadtime</div>
+    <div class="pw-subtitle">Production remaining days by season</div>
+    <div class="pw-box">
+      <label>Enter Password to Continue</label>
+      <input type="password" id="pw-input" placeholder="Password"
+             onkeydown="if(event.key==='Enter') checkPassword()">
+      <div class="pw-error" id="pw-error">Incorrect password. Please try again.</div>
+      <button class="pw-btn" onclick="checkPassword()">Continue &rarr;</button>
+    </div>
+  </div>
+
+  <!-- Admin bar (top-right) -->
+  <div class="admin-bar">
+    <span class="admin-badge" id="admin-badge">🔓 Admin Mode</span>
+    <button class="btn-admin-bar" id="btn-login" onclick="openLoginModal()">🔒 Admin Login</button>
+    <button class="btn-signout" id="btn-signout" onclick="signOut()">Sign Out</button>
+  </div>
+
+  <!-- Login modal -->
+  <div class="modal-overlay" id="login-modal">
+    <div class="modal-box">
+      <h3>🔐 Admin Login</h3>
+      <div class="modal-field">
+        <label>Username</label>
+        <input type="text" id="login-user" placeholder="Username" autocomplete="off">
+      </div>
+      <div class="modal-field">
+        <label>Password</label>
+        <input type="password" id="login-pw" placeholder="Password"
+               onkeydown="if(event.key==='Enter') doLogin()">
+      </div>
+      <div class="modal-error" id="login-err">Incorrect username or password.</div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeLoginModal()">Cancel</button>
+        <button class="btn-confirm" onclick="doLogin()">Login</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">BOM<span>x</span> Leadtime</div>
+    <div class="subtitle">Production remaining days by season</div>
+  </div>
+
+  <!-- Breadcrumb (hidden until step 2) -->
+  <div class="breadcrumb" id="breadcrumb" style="visibility:hidden;">
+    <button class="crumb-btn" onclick="goBack()">&#8592; Seasons</button>
+    <span class="sep">›</span>
+    <span class="crumb-current" id="crumb-season"></span>
+  </div>
+
+  <!-- STEP 1: Season selection -->
+  <div class="view active" id="view-season">
+    <div class="section-label">Select Season</div>
+    <div class="cards">
+      <div class="card archived" onclick="selectSeason('SS25','Dec 2024')">
+        <div class="season">SS25</div>
+        <div class="card-date">Dec 2024</div>
+        <span class="badge badge-archived">Archived</span>
+      </div>
+      <div class="card archived" onclick="selectSeason('SS26','Dec 2025')">
+        <div class="season">SS26</div>
+        <div class="card-date">Dec 2025</div>
+        <span class="badge badge-archived">Archived</span>
+      </div>
+      <div class="card current" onclick="selectSeason('SS27','May 2026')">
+        <div class="season">SS27</div>
+        <div class="card-date">May 2026</div>
+        <span class="badge badge-current">Current</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: Type selection -->
+  <div class="view" id="view-type">
+    <div class="section-label" id="type-label">Select Type</div>
+    <div class="cards">
+      <a class="type-card" id="link-fabric" href="#">
+        <div class="type-icon">🧵</div>
+        <div class="type-name">Fabric</div>
+        <div class="type-desc">Material lead times</div>
+      </a>
+      <a class="type-card" id="link-trim" href="#">
+        <div class="type-icon">🔩</div>
+        <div class="type-name">Trim</div>
+        <div class="type-desc">Trimmings &amp; accessories</div>
+      </a>
+      <a class="type-card" id="link-ila" href="#">
+        <div class="type-icon">🏷️</div>
+        <div class="type-name">ILA</div>
+        <div class="type-desc">Labels &amp; hangtags</div>
+      </a>
+      <a class="type-card" id="link-compare" href="#">
+        <div class="type-icon">⚖️</div>
+        <div class="type-name">Compare</div>
+        <div class="type-desc">Fabric vs Trim bottleneck</div>
+      </a>
+    </div>
+  </div>
+
+  <div class="footer">
+    BOMx Leadtime Tool &nbsp;·&nbsp; Factories: AD4001 (Thailand) &amp; AD4014 (Myanmar)
+  </div>
+
+  <script>
+    // ── Password gate ──
+    function checkPassword() {
+      if (document.getElementById('pw-input').value === 'thongthaigroup.net') {
+        localStorage.setItem('bomx_access','1');
+        document.getElementById('pw-screen').style.display = 'none';
+      } else {
+        document.getElementById('pw-error').style.display = 'block';
+        document.getElementById('pw-input').value = '';
+        document.getElementById('pw-input').focus();
+      }
+    }
+    if (localStorage.getItem('bomx_access') === '1') {
+      document.getElementById('pw-screen').style.display = 'none';
+    } else {
+      setTimeout(function() { document.getElementById('pw-input').focus(); }, 80);
+    }
+
+    // ── Admin token (same credentials as the tool: sopita.va / 1) ──
+    var ADMIN_TOKEN = 'c29waXRhLnZhOjE='; // btoa('sopita.va:1')
+    var _u = atob('c29waXRhLnZh'); // 'sopita.va'
+    var _p = atob('MQ==');          // '1'
+
+    // ── Check session on load ──
+    function refreshAdminUI() {
+      var isAdmin = localStorage.getItem('bomx_admin') === ADMIN_TOKEN;
+      document.getElementById('admin-badge').classList.toggle('visible', isAdmin);
+      document.getElementById('btn-signout').classList.toggle('visible', isAdmin);
+      document.getElementById('btn-login').style.display = isAdmin ? 'none' : '';
+    }
+
+    // ── Login modal ──
+    function openLoginModal() {
+      document.getElementById('login-user').value = '';
+      document.getElementById('login-pw').value = '';
+      document.getElementById('login-err').style.display = 'none';
+      document.getElementById('login-modal').classList.add('open');
+      setTimeout(function(){ document.getElementById('login-user').focus(); }, 80);
+    }
+    function closeLoginModal() {
+      document.getElementById('login-modal').classList.remove('open');
+    }
+    function doLogin() {
+      var u = document.getElementById('login-user').value.trim();
+      var p = document.getElementById('login-pw').value;
+      if (u === _u && p === _p) {
+        localStorage.setItem('bomx_admin', ADMIN_TOKEN);
+        closeLoginModal();
+        refreshAdminUI();
+      } else {
+        document.getElementById('login-err').style.display = 'block';
+        document.getElementById('login-pw').value = '';
+        document.getElementById('login-pw').focus();
+      }
+    }
+    function signOut() {
+      localStorage.removeItem('bomx_admin');
+      refreshAdminUI();
+    }
+
+    // ── Season / type navigation ──
+    var toolLinks = {
+      SS25: {
+        Fabric:  'BOMx_Leadtime_Tool.html?season=SS25',
+        Trim:    'BOMx_Trim_Tool.html?season=SS25',
+        ILA:     'BOMx_ILA_Tool.html?season=SS25',
+        Compare: 'BOMx_Compare_Tool.html?season=SS25'
+      },
+      SS26: {
+        Fabric:  'BOMx_Leadtime_Tool.html?season=SS26',
+        Trim:    'BOMx_Trim_Tool.html?season=SS26',
+        ILA:     'BOMx_ILA_Tool.html?season=SS26',
+        Compare: 'BOMx_Compare_Tool.html?season=SS26'
+      },
+      SS27: {
+        Fabric:  'BOMx_Leadtime_Tool.html?season=SS27',
+        Trim:    'BOMx_Trim_Tool.html?season=SS27',
+        ILA:     'BOMx_ILA_Tool.html?season=SS27',
+        Compare: 'BOMx_Compare_Tool.html?season=SS27'
+      }
+    };
+
+    function selectSeason(season, date) {
+      document.getElementById('crumb-season').textContent = season;
+      document.getElementById('breadcrumb').style.visibility = 'visible';
+      document.getElementById('type-label').textContent = season + ' — Select Type';
+
+      var links = toolLinks[season];
+      document.getElementById('link-fabric').href  = links.Fabric;
+      document.getElementById('link-trim').href    = links.Trim;
+      document.getElementById('link-ila').href     = links.ILA;
+      document.getElementById('link-compare').href = links.Compare;
+
+      document.getElementById('view-season').classList.remove('active');
+      document.getElementById('view-type').classList.add('active');
+    }
+
+    function goBack() {
+      document.getElementById('view-type').classList.remove('active');
+      document.getElementById('view-season').classList.add('active');
+      document.getElementById('breadcrumb').style.visibility = 'hidden';
+    }
+
+    // Run on load
+    refreshAdminUI();
+
+    // If arriving via ← Back from a tool page, auto-select that season
+    var backSeason = new URLSearchParams(window.location.search).get('season');
+    if (backSeason && toolLinks[backSeason]) selectSeason(backSeason, '');
+  </script>
+
+</body>
+</html>

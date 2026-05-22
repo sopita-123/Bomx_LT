@@ -1,0 +1,521 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOMx ILA Tool</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; font-size: 14px; }
+
+/* ── Header ── */
+.header { background: linear-gradient(135deg, #4a148c 0%, #6a1b9a 100%); color: white; padding: 18px 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:space-between; }
+.header h1 { font-size: 22px; font-weight: 700; }
+.header p  { font-size: 13px; opacity: 0.75; margin-top: 3px; }
+.btn-home   { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: white; padding: 7px 14px; border-radius: 6px; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; transition: background .2s; }
+.btn-home:hover { background: rgba(255,255,255,0.22); }
+.btn-admin  { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 7px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; transition: background .2s; }
+.btn-admin:hover  { background: rgba(255,255,255,0.25); }
+.btn-publish { background: #1565c0; border: none; color: white; padding: 7px 16px; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .2s; display: none; }
+.btn-publish:hover { background: #1976d2; }
+
+/* ── Modal ── */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:200; align-items:center; justify-content:center; }
+.modal-overlay.open { display:flex; }
+.modal-box { background:#fff; border-radius:12px; padding:28px 32px; width:300px; box-shadow:0 8px 32px rgba(0,0,0,0.18); }
+.modal-box h3 { font-size:16px; color:#4a148c; margin-bottom:16px; }
+.modal-field { margin-bottom:12px; }
+.modal-field label { display:block; font-size:12px; font-weight:600; color:#555; margin-bottom:4px; }
+.modal-field input { width:100%; padding:8px 10px; border:1px solid #ddd; border-radius:6px; font-size:13px; outline:none; }
+.modal-field input:focus { border-color:#7b1fa2; }
+.modal-error { color:#c62828; font-size:12px; margin-bottom:10px; display:none; }
+.modal-btns { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+.btn-cancel  { background:#f5f5f5; border:none; padding:8px 18px; border-radius:6px; font-size:13px; cursor:pointer; color:#555; }
+.btn-cancel:hover { background:#e0e0e0; }
+.btn-confirm { background:#6a1b9a; border:none; padding:8px 18px; border-radius:6px; font-size:13px; font-weight:700; color:white; cursor:pointer; }
+.btn-confirm:hover { background:#7b1fa2; }
+
+/* ── Upload section ── */
+.upload-wrap { max-width: 600px; margin: 32px auto; background: white; border-radius: 10px; padding: 28px; box-shadow: 0 1px 6px rgba(0,0,0,0.08); }
+.upload-wrap h2 { font-size: 15px; color: #4a148c; margin-bottom: 16px; }
+.drop-zone { border: 2px dashed #ce93d8; border-radius: 8px; padding: 32px; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; color: #888; }
+.drop-zone:hover, .drop-zone.drag { border-color: #7b1fa2; background: #f3e5f5; }
+.drop-zone .icon { font-size: 36px; margin-bottom: 8px; }
+.drop-zone .fname { font-size: 12px; color: #6a1b9a; margin-top: 8px; font-weight: 600; word-break: break-all; }
+input[type="file"] { display: none; }
+.btn-load { display: block; margin: 20px auto 0; padding: 11px 36px; background: #4a148c; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; transition: background .2s; }
+.btn-load:hover:not(:disabled) { background: #6a1b9a; }
+.btn-load:disabled { background: #b0bec5; cursor: not-allowed; }
+.error-box { color: #c62828; font-size: 13px; background: #ffebee; border: 1px solid #ef9a9a; border-radius: 6px; padding: 10px 14px; margin-top: 12px; display: none; }
+
+/* ── No data message ── */
+#no-data-msg { text-align: center; padding: 80px 20px; color: #888; display: none; }
+#no-data-msg .icon { font-size: 48px; margin-bottom: 16px; }
+#no-data-msg .title { font-size: 18px; font-weight: 700; color: #555; margin-bottom: 8px; }
+#loading { text-align: center; padding: 60px 20px; color: #888; display: none; font-size: 15px; }
+
+/* ── Data section ── */
+#data-section { display: none; }
+.toolbar { background: white; padding: 10px 20px; display: flex; gap: 10px; align-items: center; border-bottom: 1px solid #e8eaf6; flex-wrap: wrap; }
+.stats { font-size: 12px; color: #888; margin-left: auto; }
+.btn-sm { background: #f5f5f5; border: 1px solid #ddd; border-radius: 5px; padding: 5px 12px; font-size: 12px; cursor: pointer; }
+.btn-sm:hover { background: #e0e0e0; }
+.btn-export { background: #4a148c; border: none; color: white; border-radius: 5px; padding: 5px 14px; font-size: 12px; cursor: pointer; font-weight: 600; }
+.btn-export:hover { background: #6a1b9a; }
+.table-wrap { overflow-x: auto; background: white; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead th { background: #4a148c; color: white; padding: 9px 11px; text-align: left; white-space: nowrap; font-size: 11.5px; font-weight: 700; position: sticky; top: 0; z-index: 2; }
+.th-f { display: block; margin-top: 5px; width: 100%; padding: 3px 6px; border: 1px solid rgba(255,255,255,0.3); border-radius: 3px; font-size: 11px; background: rgba(255,255,255,0.15); color: white; font-weight: normal; box-sizing: border-box; min-width: 0; }
+.th-f::placeholder { color: rgba(255,255,255,0.55); }
+.th-f option { color: #333; background: white; }
+tbody tr:nth-child(even) { background: #fafafa; }
+tbody tr:hover { background: #f3e5f5; }
+td { padding: 7px 11px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+.flt-badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 700; }
+.flt-safe { background: #e3f2fd; color: #1565c0; }
+.flt-warn { background: #ffcdd2; color: #b71c1c; }
+.pg-bar { display: flex; gap: 6px; align-items: center; padding: 10px 20px; background: white; border-top: 1px solid #e8eaf6; flex-wrap: wrap; }
+.pg-btn { background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+.pg-btn:hover { background: #e0e0e0; }
+.pg-btn.active { background: #4a148c; color: white; border-color: #4a148c; }
+.pg-info { font-size: 12px; color: #888; margin-left: auto; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>BOMx ILA Tool</h1>
+    <p>Labels &amp; Hangtags — AD4001 (Thailand) &amp; AD4014 (Myanmar)</p>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center">
+    <a href="index.html" class="btn-home">&#8592; Home</a><a id="btn-back" class="btn-home" href="#">&#8592; Back</a>
+    <button class="btn-publish" id="btn-publish" onclick="genPublishableFile()">&#128190; Save &amp; Publish</button>
+    <button class="btn-admin" id="btn-admin-btn" onclick="openLogin()">&#128274; Admin</button>
+  </div>
+</div>
+
+<!-- Login modal -->
+<div class="modal-overlay" id="login-modal">
+  <div class="modal-box">
+    <h3>&#128272; Admin Login</h3>
+    <div class="modal-field">
+      <label>Username</label>
+      <input type="text" id="login-user" placeholder="Username" autocomplete="off">
+    </div>
+    <div class="modal-field">
+      <label>Password</label>
+      <input type="password" id="login-pw" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="modal-error" id="login-err">Incorrect username or password.</div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeLogin()">Cancel</button>
+      <button class="btn-confirm" onclick="doLogin()">Login</button>
+    </div>
+  </div>
+</div>
+
+<!-- Upload section (admin only) -->
+<div id="upload-section" style="display:none">
+  <div class="upload-wrap">
+    <h2>&#128196; Upload ILA BOM File</h2>
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
+         ondragover="event.preventDefault();this.classList.add('drag')"
+         ondragleave="this.classList.remove('drag')"
+         ondrop="event.preventDefault();this.classList.remove('drag');handleFile(event.dataTransfer.files[0])">
+      <div class="icon">&#127991;</div>
+      <div>Drag &amp; drop ILA Excel file here<br>or click to browse</div>
+      <div class="fname" id="fname"></div>
+    </div>
+    <input type="file" id="file-input" accept=".xlsx,.xls" onchange="handleFile(this.files[0])">
+    <div class="error-box" id="error-box"></div>
+    <button class="btn-load" id="btn-load" onclick="processData()" disabled>Load Data</button>
+  </div>
+</div>
+
+<!-- No data message -->
+<div id="no-data-msg">
+  <div class="icon">&#128202;</div>
+  <div class="title">No results published yet</div>
+  <div>Please contact the admin to publish the latest data.</div>
+</div>
+
+<!-- Loading -->
+<div id="loading">&#9203; Processing ILA data…</div>
+
+<!-- Data section -->
+<div id="data-section">
+  <div class="toolbar">
+    <button class="btn-sm" onclick="clearFilters()">Clear All Filters</button>
+    <button class="btn-export" onclick="exportData()">&#11015; Export CSV</button>
+    <span class="stats" id="stats"></span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Working Number<br><input class="th-f" id="sf-wn"  type="text" placeholder="Search…" oninput="applyFilters()"></th>
+          <th>Season<br><select class="th-f" id="sf-sea" onchange="applyFilters()"><option value="">All</option></select></th>
+          <th>T1 Factory Code<br><select class="th-f" id="sf-t1k" onchange="applyFilters()"><option value="">All</option></select></th>
+          <th>T1 Country<br><select class="th-f" id="sf-t1c" onchange="applyFilters()"><option value="">All</option></select></th>
+          <th>Model Factory LT (days)<br><input class="th-f" id="sf-lt" type="text" placeholder="e.g. >=30" oninput="applyFilters()"></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+  <div class="pg-bar" id="pg-bar"></div>
+</div>
+
+<script>
+var EMBEDDED_DATA = null;
+var EMBEDDED_DATE = '';
+
+var BOM_SEASON = (new URLSearchParams(window.location.search).get('season')||'SS27');
+
+var allData = [];
+var filteredData = [];
+var PAGE = 100, curPage = 1;
+
+var _u = atob('c29waXRhLnZh');
+var _p = atob('MQ==');
+var ADMIN_TOKEN = 'c29waXRhLnZhOjE=';
+
+// ── helpers ──
+function toNum(v){ var n=parseFloat(v); return isNaN(n)?null:n; }
+
+function numMatch(val, filterStr){
+  var s=filterStr.trim();
+  if(!s) return true;
+  if(!s) return true;
+  var n=toNum(val);
+  if(n===null) return false;
+  var m;
+  if((m=s.match(/^(>=|<=|>|<|=)(-?\d+(\.\d+)?)$/)))
+    return eval(''+n+m[1]+parseFloat(m[2]));
+  var plain=parseFloat(s);
+  return !isNaN(plain) && n===plain;
+}
+
+// ── parse ILA BOM ──
+function parseBOM(wb){
+  var ws=wb.Sheets[wb.SheetNames[0]];
+  var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+  var hIdx=0,best=0;
+  for(var i=0;i<Math.min(rows.length,15);i++){
+    var c=rows[i].filter(function(v){return v!==null;}).length;
+    if(c>best){best=c;hIdx=i;}
+  }
+  var ci={};
+  rows[hIdx].forEach(function(h,idx){if(h)ci[String(h)]=idx;});
+  function g(row,name){var idx=ci[name];return idx!==undefined?row[idx]:null;}
+
+  var seen={}, out=[];
+  for(var i=hIdx+1;i<rows.length;i++){
+    var row=rows[i];
+    if(!row||row.every(function(v){return v===null;})) continue;
+    var t1k=String(g(row,'T1 Factory CODE')||'');
+    if(t1k==='AD4013') continue;
+    var wn=String(g(row,'Working Number')||'');
+    if(!wn) continue;
+    var key=wn+'|'+t1k;
+    if(seen[key]) continue;
+    seen[key]=true;
+    out.push({
+      wn : wn,
+      sea: String(g(row,'Season')||''),
+      t1k: t1k,
+      t1n: String(g(row,'T1 Factory NAME')||''),
+      t1c: String(g(row,'T1 Factory Country')||''),
+      fLT: toNum(g(row,'Model Factory Leadtime'))
+    });
+  }
+  return out;
+}
+
+// ── file handling ──
+function handleFile(f){
+  if(!f) return;
+  ilaFile=f;
+  document.getElementById('fname').textContent=f.name;
+  document.getElementById('btn-load').disabled=false;
+  document.getElementById('error-box').style.display='none';
+}
+
+function readAB(f){
+  return new Promise(function(res,rej){
+    var r=new FileReader();
+    r.onload=function(e){res(e.target.result);};
+    r.onerror=rej;
+    r.readAsArrayBuffer(f);
+  });
+}
+
+// ── process ──
+async function processData(){
+  if(!ilaFile){alert('Please select a file.');return;}
+  document.getElementById('error-box').style.display='none';
+  document.getElementById('upload-section').style.display='none';
+  document.getElementById('loading').style.display='block';
+  try{
+    var bAB=await readAB(ilaFile);
+    allData=parseBOM(XLSX.read(bAB,{type:'array'}));
+    if(!allData.length) throw new Error('No data rows found. Please check the file format.');
+    filteredData=allData.slice();
+    populateDDs();
+    applyFilters();
+    document.getElementById('loading').style.display='none';
+    document.getElementById('data-section').style.display='block';
+    document.getElementById('btn-publish').style.display='block';
+    // Keep upload section visible for admin
+    if(localStorage.getItem('bomx_admin')===ADMIN_TOKEN){
+      document.getElementById('upload-section').style.display='block';
+    }
+  }catch(err){
+    document.getElementById('loading').style.display='none';
+    document.getElementById('upload-section').style.display='block';
+    var eb=document.getElementById('error-box');
+    eb.textContent='Error: '+err.message; eb.style.display='block';
+    console.error(err);
+  }
+}
+
+// ── dropdowns ──
+function populateDDs(){
+  function fill(id, vals){
+    var sel=document.getElementById(id);
+    var cur=sel.value;
+    sel.innerHTML='<option value="">All</option>';
+    vals.sort().forEach(function(v){
+      var o=document.createElement('option');
+      o.value=v; o.textContent=v; sel.appendChild(o);
+    });
+    sel.value=cur;
+  }
+  fill('sf-sea', [...new Set(allData.map(function(r){return r.sea;}))].filter(Boolean));
+  fill('sf-t1k', [...new Set(allData.map(function(r){return r.t1k;}))].filter(Boolean));
+  fill('sf-t1c', [...new Set(allData.map(function(r){return r.t1c;}))].filter(Boolean));
+}
+
+// ── filters ──
+function applyFilters(){
+  var wn=document.getElementById('sf-wn').value.toLowerCase();
+  var sea=document.getElementById('sf-sea').value;
+  var t1k=document.getElementById('sf-t1k').value;
+  var t1c=document.getElementById('sf-t1c').value;
+  var lt=document.getElementById('sf-lt').value;
+  filteredData=allData.filter(function(r){
+    if(wn  && !r.wn.toLowerCase().includes(wn))  return false;
+    if(sea  && r.sea!==sea)  return false;
+    if(t1k  && r.t1k!==t1k) return false;
+    if(t1c  && r.t1c!==t1c) return false;
+    if(lt   && !numMatch(r.fLT, lt)) return false;
+    return true;
+  });
+  curPage=1;
+  renderTable();
+}
+
+function clearFilters(){
+  ['sf-wn','sf-lt'].forEach(function(id){document.getElementById(id).value='';});
+  ['sf-sea','sf-t1k','sf-t1c'].forEach(function(id){document.getElementById(id).value='';});
+  applyFilters();
+}
+
+// ── render ──
+function renderTable(){
+  var start=(curPage-1)*PAGE, end=Math.min(start+PAGE, filteredData.length);
+  var html='';
+  for(var i=start;i<end;i++){
+    var r=filteredData[i];
+    var ltClass = (r.fLT!==null&&r.fLT<30)?'flt-warn':'flt-safe';
+    html+='<tr>'+
+      '<td>'+r.wn+'</td>'+
+      '<td>'+r.sea+'</td>'+
+      '<td>'+r.t1k+'</td>'+
+      '<td>'+r.t1c+'</td>'+
+      '<td>'+(r.fLT!==null?'<span class="flt-badge '+ltClass+'">'+r.fLT+' days</span>':'—')+'</td>'+
+    '</tr>';
+  }
+  document.getElementById('tbody').innerHTML=html;
+  document.getElementById('stats').textContent=
+    'Showing '+(filteredData.length?start+1:0)+'–'+end+' of '+filteredData.length+' rows';
+  renderPager(filteredData.length);
+}
+
+function renderPager(total){
+  var pages=Math.ceil(total/PAGE)||1;
+  var html='';
+  for(var p=1;p<=pages;p++){
+    html+='<button class="pg-btn'+(p===curPage?' active':'')+'" onclick="goPage('+p+')">'+p+'</button>';
+  }
+  html+='<span class="pg-info">Page '+curPage+' of '+pages+'</span>';
+  document.getElementById('pg-bar').innerHTML=html;
+}
+
+function goPage(p){ curPage=p; renderTable(); }
+
+// ── export ──
+function exportData(){
+  var hdrs=['Working Number','Season','T1 Factory CODE','T1 Country','Model Factory LT (days)'];
+  var rows=filteredData.map(function(r){return[r.wn,r.sea,r.t1k,r.t1c,r.fLT];});
+  var csv=[hdrs].concat(rows).map(function(row){return row.map(function(v){return'"'+(v===null?'':v)+'"';}).join(',');}).join('\n');
+  var blob=new Blob([csv],{type:'text/csv'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='ILA_data.csv'; a.click();
+}
+
+// ── SAVE & PUBLISH ──────────────────────────────────────────────────────────
+async function genPublishableFile(){
+  if(!allData.length){alert('Please load and process an ILA file first.');return;}
+  var date=new Date().toISOString().slice(0,10);
+  var jdata=JSON.stringify(allData)
+    .replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026');
+
+  var src;
+  try{
+    var resp=await fetch(location.href,{cache:'no-cache'});
+    if(!resp.ok) throw new Error();
+    src=await resp.text();
+  }catch(e){
+    alert('Cannot reach this page as a URL.\nPlease open from the server: http://192.168.71.138:8501/');
+    return;
+  }
+
+  // Use regex replace so it works for every publish (not just the first)
+  src=src.replace(/^var EMBEDDED_DATA = .*$/m,'var EMBEDDED_DATA = '+jdata+';');
+  src=src.replace(/^var EMBEDDED_DATE = '[^']*';/m,"var EMBEDDED_DATE = '"+date+"';");
+
+  var h=location.hostname;
+  var isSrv=(h&&h!=='');
+  var isGH=(isSrv&&location.href.includes('github.io'));
+
+  if(isGH){
+    var saved=await _pushToGitHub(src,date);
+    if(saved) _pubDone(date,'Pushed to GitHub Pages');
+  } else if(isSrv){
+    try{
+      var sr=await fetch(location.origin+'/save',{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({html:src,filename:'BOMx_ILA_Tool.html'})
+      });
+      if((await sr.json()).ok) _pubDone(date,'Saved to local server');
+      else throw new Error();
+    }catch(e){ alert('Local save failed. Try GitHub Pages instead.'); }
+  } else {
+    var blob=new Blob([src],{type:'text/html'});
+    var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='BOMx_ILA_Tool.html'; a.click();
+    _pubDone(date,'Downloaded — replace the file manually');
+  }
+}
+
+async function _pushToGitHub(src,date){
+  var OWNER='sopita-123', REPO='Autoupdate', FILE='Bomx Leadtime/BOMx_ILA_Tool.html';
+  var token=localStorage.getItem('gh_pat');
+  if(!token){ token=prompt('Enter your GitHub fine-grained token:'); if(!token)return false; localStorage.setItem('gh_pat',token); }
+  var apiUrl='https://api.github.com/repos/'+OWNER+'/'+REPO+'/contents/'+encodeURIComponent(FILE).replace(/%2F/g,'/');
+  var headers={'Authorization':'token '+token,'Content-Type':'application/json','Accept':'application/vnd.github+json'};
+  var shaResp=await fetch(apiUrl,{headers:headers});
+  if(!shaResp.ok){alert('GitHub API error: '+shaResp.status);return false;}
+  var sha=(await shaResp.json()).sha;
+  var content=btoa(unescape(encodeURIComponent(src)));
+  var put=await fetch(apiUrl,{method:'PUT',headers:headers,body:JSON.stringify({message:'Publish ILA results '+date,content:content,sha:sha})});
+  if(!put.ok){var e=await put.json();alert('GitHub push failed: '+(e.message||put.status));return false;}
+  return true;
+}
+
+function _pubDone(date,msg){
+  document.querySelector('.header p').textContent+='  |  Data updated: '+date;
+  alert('✓ Published! ('+msg+')');
+}
+
+// ── ADMIN ──────────────────────────────────────────────────────────────────
+function openLogin(){
+  document.getElementById('login-user').value='';
+  document.getElementById('login-pw').value='';
+  document.getElementById('login-err').style.display='none';
+  document.getElementById('login-modal').classList.add('open');
+  setTimeout(function(){document.getElementById('login-user').focus();},80);
+}
+function closeLogin(){ document.getElementById('login-modal').classList.remove('open'); }
+
+function doLogin(){
+  var u=document.getElementById('login-user').value.trim();
+  var pw=document.getElementById('login-pw').value;
+  if(u===_u&&pw===_p){
+    closeLogin();
+    revealAdmin();
+  } else {
+    document.getElementById('login-err').style.display='block';
+    document.getElementById('login-pw').value='';
+    document.getElementById('login-pw').focus();
+  }
+}
+
+function revealAdmin(){
+  document.getElementById('upload-section').style.display='block';
+  document.getElementById('no-data-msg').style.display='none';
+  if(allData.length) document.getElementById('btn-publish').style.display='block';
+  document.getElementById('btn-admin-btn').textContent='🔓 Admin';
+}
+
+// ── auto-load from server ────────────────────────────────────────────────────
+async function loadFromServer(){
+  var h=location.hostname;
+  var isLocal=(h==='localhost'||h==='127.0.0.1'||h.startsWith('192.168'));
+
+  if(!isLocal){
+    document.getElementById('loading').style.display='none';
+    if(typeof EMBEDDED_DATA!=='undefined'&&EMBEDDED_DATA&&EMBEDDED_DATA.length){
+      allData=EMBEDDED_DATA;
+      filteredData=allData.slice();
+      populateDDs();
+      applyFilters();
+      document.getElementById('data-section').style.display='block';
+      document.querySelector('.header p').textContent+=' — Published '+EMBEDDED_DATE;
+    }else{
+      document.getElementById('no-data-msg').style.display='block';
+    }
+    return;
+  }
+
+  document.getElementById('loading').style.display='block';
+  document.getElementById('no-data-msg').style.display='none';
+  document.getElementById('data-section').style.display='none';
+  try{
+    var resp=await fetch('/api/file?season='+BOM_SEASON+'&type=ILA',{cache:'no-cache'});
+    if(!resp.ok) throw new Error('Data not available for '+BOM_SEASON+' ILA.');
+    var buf=await resp.arrayBuffer();
+    allData=parseBOM(XLSX.read(new Uint8Array(buf),{type:'array'}));
+    if(!allData.length) throw new Error('No rows found in the ILA file.');
+    filteredData=allData.slice();
+    populateDDs();
+    applyFilters();
+    document.getElementById('loading').style.display='none';
+    document.getElementById('data-section').style.display='block';
+    document.querySelector('.header p').textContent+=' — Data loaded from server';
+  }catch(err){
+    document.getElementById('loading').style.display='none';
+    var nm=document.getElementById('no-data-msg');
+    nm.style.display='block';
+    nm.innerHTML='<div class="icon">⚠️</div>'+
+      '<div class="title" style="color:#c62828">'+err.message+'</div>'+
+      '<div>Make sure the server is running: <b>http://192.168.71.138:8501/</b></div>';
+    console.error(err);
+  }
+}
+
+// ── DOMContentLoaded ────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async function(){
+  document.querySelector('.header h1').textContent += ' — ' + BOM_SEASON;
+  document.getElementById('btn-back').href = 'index.html?season=' + BOM_SEASON;
+  await loadFromServer();
+  if(localStorage.getItem('bomx_admin')===ADMIN_TOKEN){
+    document.getElementById('btn-admin-btn').textContent='🔓 Admin';
+  }
+});
+</script>
+</body>
+</html>
