@@ -1,1217 +1,0 @@
-﻿<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BOMx Leadtime Tool — Trim</title>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; font-size: 14px; }
-
-.header { background: linear-gradient(135deg, #1a237e 0%, #283593 100%); color: white; padding: 18px 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:space-between; }
-.header h1 { font-size: 22px; font-weight: 700; }
-.header p  { font-size: 13px; opacity: 0.75; margin-top: 3px; }
-.btn-home { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: white; padding: 7px 14px; border-radius: 6px; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; transition: background .2s; }
-.btn-home:hover { background: rgba(255,255,255,0.22); }
-.btn-admin { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 7px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; transition: background .2s; }
-.btn-admin:hover { background: rgba(255,255,255,0.25); }
-.btn-share { background: #43a047; border: none; color: white; padding: 7px 16px; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .2s; display: none; }
-.btn-share:hover { background: #388e3c; }
-.btn-publish { background: #1565c0; border: none; color: white; padding: 7px 16px; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .2s; display: none; }
-.btn-publish:hover { background: #1976d2; }
-
-/* ── Modal overlay ── */
-.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9000; align-items:center; justify-content:center; }
-.modal-overlay.open { display:flex; }
-.modal-box { background:white; border-radius:12px; padding:28px; width:400px; max-width:95vw; box-shadow:0 8px 32px rgba(0,0,0,0.25); }
-.modal-box h3 { font-size:16px; font-weight:700; color:#1a237e; margin-bottom:16px; }
-.modal-field { display:flex; flex-direction:column; gap:4px; margin-bottom:14px; }
-.modal-field label { font-size:12px; font-weight:600; color:#888; text-transform:uppercase; }
-.modal-field input { padding:8px 12px; border:1px solid #dde1f0; border-radius:6px; font-size:14px; }
-.modal-field input:focus { outline:none; border-color:#3949ab; }
-.modal-error { color:#c62828; font-size:13px; margin-bottom:10px; display:none; }
-.modal-btns { display:flex; gap:10px; justify-content:flex-end; margin-top:6px; }
-.modal-btns button { padding:8px 20px; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer; }
-.btn-cancel { border:1px solid #dde1f0; background:white; color:#555; }
-.btn-cancel:hover { background:#f5f5f5; }
-.btn-confirm { border:none; background:#1a237e; color:white; }
-.btn-confirm:hover { background:#283593; }
-
-/* ── Transit editor modal ── */
-.te-modal { width:640px; max-width:95vw; max-height:85vh; display:flex; flex-direction:column; }
-.te-modal h3 { margin-bottom:4px; }
-.te-subtitle { font-size:12px; color:#888; margin-bottom:16px; }
-.te-table-wrap { overflow-y:auto; flex:1; border:1px solid #e8eaf6; border-radius:6px; }
-.te-table { width:100%; border-collapse:collapse; font-size:13px; }
-.te-table th { background:#283593; color:white; padding:8px 12px; text-align:left; position:sticky; top:0; }
-.te-table td { padding:7px 12px; border-bottom:1px solid #f0f0f8; }
-.te-table tr:hover td { background:#f5f7ff; }
-.te-dest { font-weight:600; color:#1a237e; }
-.te-input { width:80px; padding:4px 8px; border:1px solid #dde1f0; border-radius:4px; font-size:13px; text-align:center; }
-.te-input:focus { outline:none; border-color:#3949ab; }
-.te-modal .modal-btns { margin-top:16px; padding-top:14px; border-top:1px solid #e8eaf6; }
-.te-saved { color:#2e7d32; font-size:13px; font-weight:600; display:none; margin-top:4px; }
-
-.upload-wrap { max-width: 500px; margin: 36px auto; padding: 0 16px; }
-.upload-grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
-.card { background: white; border-radius: 10px; padding: 22px; box-shadow: 0 1px 6px rgba(0,0,0,0.08); }
-.card h3 { font-size: 13px; font-weight: 700; color: #1a237e; margin-bottom: 4px; }
-.card p  { font-size: 12px; color: #999; margin-bottom: 14px; }
-.drop-zone { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 20px 16px; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; user-select: none; }
-.drop-zone:hover { border-color: #3949ab; background: #f5f7ff; }
-.drop-zone.loaded { border-color: #43a047; background: #f1f8e9; }
-.drop-zone .icon { font-size: 28px; }
-.drop-zone .hint { font-size: 12px; color: #aaa; margin-top: 6px; }
-.drop-zone .fname { font-size: 12px; color: #2e7d32; margin-top: 8px; font-weight: 600; word-break: break-all; }
-input[type="file"] { display: none; }
-.btn-load { display: block; margin: 24px auto 0; padding: 12px 40px; background: #1a237e; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; transition: background .2s, transform .1s; }
-.btn-load:hover:not(:disabled) { background: #283593; transform: translateY(-1px); }
-.btn-load:disabled { background: #b0bec5; cursor: not-allowed; }
-.error-box { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; border-radius: 6px; padding: 10px 14px; margin-top: 14px; font-size: 13px; display: none; }
-
-#loading { display: none; text-align: center; padding: 60px 20px; color: #555; }
-.spinner { width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top-color: #1a237e; border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 14px; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.tab-bar { background: white; display: flex; border-bottom: 2px solid #e8eaf6; padding: 0 20px; }
-.tab-btn { padding: 12px 20px; border: none; background: none; font-size: 14px; font-weight: 600; color: #888; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color .15s, border-color .15s; }
-.tab-btn:hover { color: #3949ab; }
-.tab-btn.active { color: #1a237e; border-bottom-color: #1a237e; }
-
-.stats-bar { background: #283593; color: white; padding: 10px 20px; display: flex; flex-wrap: wrap; gap: 24px; font-size: 13px; }
-.stat { display: flex; gap: 6px; align-items: center; }
-.stat-val { font-weight: 700; font-size: 15px; }
-
-.filter-bar { background: white; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; border-bottom: 1px solid #e8eaf6; }
-.fg { display: flex; flex-direction: column; gap: 3px; }
-.fg label { font-size: 11px; color: #888; font-weight: 600; text-transform: uppercase; }
-.fg input, .fg select { padding: 6px 10px; border: 1px solid #dde1f0; border-radius: 5px; font-size: 13px; min-width: 140px; background: #fafbff; }
-.fg input:focus, .fg select:focus { outline: none; border-color: #3949ab; background: white; }
-.btn-sm { padding: 6px 14px; border-radius: 5px; font-size: 13px; cursor: pointer; font-weight: 600; border: 1px solid #dde1f0; background: white; }
-.btn-sm:hover { background: #f0f2ff; }
-.btn-export { padding: 7px 18px; background: #2e7d32; color: white; border: none; border-radius: 5px; font-size: 13px; font-weight: 700; cursor: pointer; margin-left: auto; }
-.btn-export:hover { background: #388e3c; }
-
-.legend { padding: 8px 16px; background: #fafafe; border-bottom: 1px solid #e8eaf6; font-size: 12px; color: #666; display: flex; gap: 16px; flex-wrap: wrap; }
-.leg-item { display: flex; align-items: center; gap: 5px; }
-.leg-dot { width: 12px; height: 12px; border-radius: 2px; }
-
-.table-wrap { overflow-x: auto; background: white; }
-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-thead th { background: #283593; color: white; padding: 9px 11px; text-align: left; white-space: nowrap; font-size: 11.5px; font-weight: 700; position: sticky; top: 0; z-index: 2; }
-.th-f { display:block; margin-top:5px; width:100%; padding:3px 6px; border:1px solid rgba(255,255,255,0.3); border-radius:3px; font-size:11px; background:rgba(255,255,255,0.15); color:white; font-weight:normal; box-sizing:border-box; min-width:0; }
-.th-f::placeholder { color:rgba(255,255,255,0.55); }
-.th-f option { color:#333; background:white; }
-tbody td { padding: 6px 11px; border-bottom: 1px solid #f0f0f8; white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
-tbody tr:hover td { background: #ede7f6 !important; }
-tbody tr:nth-child(even) td { background: #fafafe; }
-
-.c-transit  { color: #0277bd; font-weight: 600; }
-.c-na       { color: #bdbdbd; font-style: italic; }
-
-/* ── Remaining — Normal column (blue theme) ── */
-th.th-normal { background: #1565c0 !important; border-left: 3px solid #82b1ff; }
-.cn-pos  { color: #0d47a1; background: #bbdefb !important; font-weight: 700; }
-.cn-zero { color: #1565c0; background: #e3f2fd !important; font-weight: 700; }
-.cn-neg  { color: #b71c1c; background: #ffcdd2 !important; font-weight: 700; }
-
-/* ── Remaining — Speed column (orange theme) ── */
-th.th-speed { background: #e65100 !important; border-left: 3px solid #ffcc80; }
-.cs-pos  { color: #bf360c; background: #ffe0b2 !important; font-weight: 700; }
-.cs-zero { color: #e65100; background: #fff3e0 !important; font-weight: 700; }
-.cs-neg  { color: #b71c1c; background: #ffcdd2 !important; font-weight: 700; }
-
-.pagination { display: flex; align-items: center; gap: 6px; padding: 12px 16px; background: white; border-top: 1px solid #e8eaf6; flex-wrap: wrap; }
-.pg-btn { padding: 4px 10px; border: 1px solid #c5cae9; border-radius: 4px; background: white; cursor: pointer; font-size: 13px; min-width: 32px; text-align: center; }
-.pg-btn:hover:not(.active) { background: #e8eaf6; }
-.pg-btn.active { background: #1a237e; color: white; border-color: #1a237e; font-weight: 700; }
-.pg-dots { color: #aaa; padding: 0 2px; }
-.pg-info { font-size: 12px; color: #888; margin-left: auto; }
-  </style>
-</head>
-<body>
-<div class="header">
-  <div>
-    <h1>BOMx Leadtime Tool — Trim</h1>
-    <p>Detail view and production remaining days per style — AD4001 (Thailand) &amp; AD4014 (Myanmar)</p>
-  </div>
-  <div style="display:flex;gap:10px;align-items:center">
-    <button class="btn-share" id="btn-share" onclick="genSharedPage()">📤 Generate Shared Page</button>
-    <button class="btn-publish" id="btn-publish" onclick="genPublishableFile()">💾 Save &amp; Publish</button>
-    <a href="index.html" class="btn-home">&#8592; Home</a><a id="btn-back" class="btn-home" href="#">&#8592; Back</a>
-    <button class="btn-admin" onclick="openLogin()">🔒 Admin</button>
-  </div>
-</div>
-
-<!-- ── Login modal ── -->
-<div class="modal-overlay" id="login-modal">
-  <div class="modal-box">
-    <h3>🔐 Admin Login</h3>
-    <div class="modal-field">
-      <label>Username</label>
-      <input type="text" id="login-user" placeholder="Username" autocomplete="off">
-    </div>
-    <div class="modal-field">
-      <label>Password</label>
-      <input type="password" id="login-pw" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
-    </div>
-    <div class="modal-error" id="login-err">Incorrect username or password.</div>
-    <div class="modal-btns">
-      <button class="btn-cancel" onclick="closeLogin()">Cancel</button>
-      <button class="btn-confirm" onclick="doLogin()">Login</button>
-    </div>
-  </div>
-</div>
-
-<!-- ── Transit editor modal ── -->
-<div class="modal-overlay" id="te-modal">
-  <div class="modal-box te-modal">
-    <h3>✏️ Edit Transit Time Database</h3>
-    <div class="te-subtitle">Changes apply immediately. Reload the page to reset to defaults.</div>
-    <div class="te-table-wrap">
-      <table class="te-table">
-        <thead><tr><th>Destination</th><th>COO (Supplier Country)</th><th>Transit LT (days)</th></tr></thead>
-        <tbody id="te-tbody"></tbody>
-      </table>
-    </div>
-    <div class="modal-btns">
-      <div class="te-saved" id="te-saved">✓ Changes applied</div>
-      <button class="btn-cancel" onclick="closeTE()">Close</button>
-      <button class="btn-confirm" onclick="applyTE()">Apply Changes</button>
-    </div>
-  </div>
-</div>
-
-<div id="upload-section" class="upload-wrap" style="display:none">
-  <div class="upload-grid">
-    <div class="card">
-      <h3>Upload BOM File</h3>
-      <p>APP_BOMx_Fabric_*.xlsx — Transit times are built in automatically</p>
-      <div class="drop-zone" id="bom-zone" onclick="document.getElementById('bom-input').click()">
-        <div class="icon">📄</div>
-        <div>Click to select file</div>
-        <div class="hint">.xlsx format</div>
-        <div class="fname" id="bom-name"></div>
-      </div>
-      <input type="file" id="bom-input" accept=".xlsx,.xls,.xlsb">
-    </div>
-  </div>
-  <button class="btn-load" id="btn-load" onclick="processData()" disabled>Load Data</button>
-  <div class="error-box" id="error-box"></div>
-  <div style="text-align:center;margin-top:14px">
-    <button id="btn-edit-transit" onclick="openTE()" style="display:none;padding:7px 18px;border:1px solid #c5cae9;border-radius:6px;background:white;font-size:13px;cursor:pointer;color:#3949ab;font-weight:600">✏️ Edit Transit Times</button>
-  </div>
-</div>
-
-<div id="no-data-msg" style="display:none;text-align:center;padding:80px 20px;color:#888">
-  <div style="font-size:48px;margin-bottom:16px">📊</div>
-  <div style="font-size:18px;font-weight:700;color:#555;margin-bottom:8px">No results published yet</div>
-  <div style="font-size:14px">Please contact the admin to publish the latest data.</div>
-</div>
-
-<div id="loading">
-  <div class="spinner"></div>
-  <div>Reading and processing data — may take a few seconds for large files…</div>
-</div>
-
-<div id="data-section" style="display:none">
-
-  <div class="tab-bar">
-    <button class="tab-btn active" id="tbtn-detail"  onclick="showTab('detail')">📋 Detail View</button>
-    <button class="tab-btn"        id="tbtn-summary" onclick="showTab('summary')">⏱ Production Remaining</button>
-  </div>
-
-  <!-- ── DETAIL TAB ── -->
-  <div id="tab-detail">
-    <div class="stats-bar" id="d-stats"></div>
-    <div class="filter-bar">
-      <div class="fg"><label>Search all</label><input type="text" id="d-search" placeholder="Type anything…"></div>
-      <div class="fg"><label>T1 Country</label><select id="d-t1c"><option value="">All</option></select></div>
-      <div class="fg"><label>T1 Factory Code</label><select id="d-t1k"><option value="">All</option></select></div>
-      <div class="fg"><label>T2 Country</label><select id="d-t2c"><option value="">All</option></select></div>
-      <div class="fg"><label>Season</label><select id="d-sea"><option value="">All</option></select></div>
-      <div class="fg"><label>Working Number</label><input type="text" id="d-wn" placeholder="e.g. S2106…" style="min-width:160px"></div>
-      <button class="btn-sm" onclick="clearDetail()">Clear</button>
-      <button class="btn-export" onclick="exportDetail()">⬇ Export</button>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>Working Number</th><th>T1 Factory CODE</th><th>T1 Factory NAME</th><th>T1 Country</th>
-          <th>T2 Supplier NAME</th><th>T2 Country</th><th>Article</th><th>Season</th>
-          <th>Material CODE</th><th>Material NAME</th><th>BOM Part Name</th>
-          <th>Mat. Supplier LT</th><th>Speed LT</th><th>Factory LT</th>
-          <th>Transit LT</th><th>Total LT</th>
-        </tr></thead>
-        <tbody id="d-tbody"></tbody>
-      </table>
-    </div>
-    <div class="pagination" id="d-page"></div>
-  </div>
-
-  <!-- ── SUMMARY TAB ── -->
-  <div id="tab-summary" style="display:none">
-    <div class="stats-bar" id="s-stats"></div>
-    <div class="filter-bar" style="justify-content:flex-end">
-      <button class="btn-sm" onclick="clearSummary()">Clear All Filters</button>
-      <button class="btn-export" onclick="exportSummary()">⬇ Export</button>
-    </div>
-    <div class="legend">
-      <strong style="margin-right:6px">Colour key:</strong>
-      <span class="leg-item"><span class="leg-dot" style="background:#1565c0;width:16px;border-radius:3px"></span> <strong style="color:#1565c0">Remaining — Normal</strong></span>
-      <span class="leg-item"><span class="leg-dot" style="background:#e65100;width:16px;border-radius:3px"></span> <strong style="color:#e65100">Remaining — Speed</strong></span>
-      <span style="margin:0 6px;color:#ccc">|</span>
-      <span class="leg-item"><span class="leg-dot" style="background:#bbdefb"></span> ≥ 30 days (safe)</span>
-      <span class="leg-item"><span class="leg-dot" style="background:#ffcdd2"></span> &lt; 30 days — including negative (urgent / late)</span>
-      <span style="margin-left:8px;color:#777">Formula: Factory LT − Max Mat. LT − Transit LT</span>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>Working Number<br><input class="th-f" id="sf-wn" type="text" placeholder="Search…" onclick="event.stopPropagation()"></th>
-          <th>Article<br><input class="th-f" id="sf-art" type="text" placeholder="Search…" onclick="event.stopPropagation()"></th>
-          <th>Season<br><select class="th-f" id="sf-sea" onclick="event.stopPropagation()"><option value="">All</option></select></th>
-          <th>Model Collection Pack<br><select class="th-f" id="sf-mcp" onclick="event.stopPropagation()"><option value="">All</option></select></th>
-          <th>T1 Factory Code<br><select class="th-f" id="sf-t1k" onclick="event.stopPropagation()"><option value="">All</option></select></th>
-          <th>T1 Country<br><select class="th-f" id="sf-t1c" onclick="event.stopPropagation()"><option value="">All</option></select></th>
-          <th>Factory LT (days)<br><input class="th-f" id="sf-flt" type="text" placeholder="e.g. &gt;=30"></th>
-          <th>Critical Supplier (longest LT)<br><input class="th-f" id="sf-csup" type="text" placeholder="Search…" onclick="event.stopPropagation()"></th>
-          <th>T2 Country<br><select class="th-f" id="sf-t2c" onclick="event.stopPropagation()"><option value="">All</option></select></th>
-          <th>Max Mat. LT (days)<br><input class="th-f" id="sf-mlt" type="text" placeholder="e.g. &gt;=30"></th>
-          <th>Transit LT (days)<br><input class="th-f" id="sf-tlt" type="text" placeholder="e.g. &gt;=10"></th>
-          <th class="th-normal">Remaining — Normal (days)<br><input class="th-f" id="sf-rnorm" type="text" placeholder="e.g. &lt;0"></th>
-          <th>Speed LT (days)<br><input class="th-f" id="sf-slt" type="text" placeholder="e.g. &gt;=20"></th>
-          <th class="th-speed">Remaining — Speed (days)<br><input class="th-f" id="sf-rspd" type="text" placeholder="e.g. &lt;0"></th>
-        </tr></thead>
-        <tbody id="s-tbody"></tbody>
-      </table>
-    </div>
-    <div class="pagination" id="s-page"></div>
-  </div>
-
-</div>
-
-<script>
-var allData=[], filteredD=[], summaryData=[], filteredS=[];
-var dPage=1, sPage=1;
-var bomFile=null;
-var timerD=null, timerS=null;
-var DPAGE=100, SPAGE=50;
-
-var EMBEDDED_DATA = [{"wn":"F2450MTR511","art":"IN5590","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"BEMIS (HONGKONG)","ccnt":"HONG KONG","mLT":42,"tDays":13,"rNorm":35,"sLT":30,"rSpd":47},{"wn":"F2450MTR512","art":"IN5591","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"BEMIS (HONGKONG)","ccnt":"HONG KONG","mLT":42,"tDays":13,"rNorm":35,"sLT":30,"rSpd":47},{"wn":"F2450MTR513A","art":"JE6694","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.C.I. (VIETNAM BD)","ccnt":"VIETNAM","mLT":25,"tDays":17,"rNorm":48,"sLT":null,"rSpd":null},{"wn":"F2450MTR514A","art":"JE6698","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.C.I. (VIETNAM BD)","ccnt":"VIETNAM","mLT":25,"tDays":17,"rNorm":48,"sLT":null,"rSpd":null},{"wn":"F2450MTR515A","art":"JE6702","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.C.I. (VIETNAM BD)","ccnt":"VIETNAM","mLT":25,"tDays":17,"rNorm":48,"sLT":null,"rSpd":null},{"wn":"F2450WTR390","art":"IK7920","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.C.I. (VIETNAM BD)","ccnt":"VIETNAM","mLT":25,"tDays":17,"rNorm":48,"sLT":null,"rSpd":null},{"wn":"F2450WTR391","art":"IK7918","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.C.I. (VIETNAM BD)","ccnt":"VIETNAM","mLT":25,"tDays":17,"rNorm":48,"sLT":null,"rSpd":null},{"wn":"F2450WTR630","art":"IT2273","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"PRO-STRETCH CHINA (ZHONGSHAN)","ccnt":"CHINA","mLT":40,"tDays":19,"rNorm":46,"sLT":10,"rSpd":76},{"wn":"F2450WTR632","art":"IT2272","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"PRO-STRETCH CHINA (ZHONGSHAN)","ccnt":"CHINA","mLT":40,"tDays":19,"rNorm":46,"sLT":10,"rSpd":76},{"wn":"F2450WTR633","art":"IT2275","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"PRO-STRETCH CHINA (ZHONGSHAN)","ccnt":"CHINA","mLT":40,"tDays":19,"rNorm":46,"sLT":10,"rSpd":76},{"wn":"F2450WTR634","art":"IX8196","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"PRO-STRETCH CHINA (ZHONGSHAN)","ccnt":"CHINA","mLT":40,"tDays":19,"rNorm":46,"sLT":10,"rSpd":76},{"wn":"F2450WTR635","art":"IT2282","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"PRO-STRETCH CHINA (ZHONGSHAN)","ccnt":"CHINA","mLT":40,"tDays":19,"rNorm":46,"sLT":10,"rSpd":76},{"wn":"F2548WVB007Y","art":"JM9521","sea":"SS27","mcp":"VOLLEYBALL 4 INCHES SHORTS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"F2548WVB007","art":"JL5435","sea":"SS27","mcp":"VOLLEYBALL 4 INCHES SHORTS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"F2548WVB008","art":"JL5403","sea":"SS27","mcp":"VOLLEYBALL 4 INCHES SHORTS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":56,"sLT":30,"rSpd":56},{"wn":"F2548WVB009","art":"KC2969","sea":"SS27","mcp":"VOLLEYBALL 4 INCHES SHORTS","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":80,"sLT":21,"rSpd":80},{"wn":"F2548WVB101Y","art":"JL5406","sea":"SS27","mcp":"TECHFIT VOLLEYBALL SHORTS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"PRO-STRETCH CHINA (ZHONGSHAN)","ccnt":"CHINA","mLT":40,"tDays":19,"rNorm":46,"sLT":null,"rSpd":null},{"wn":"F2548WVB101","art":"JL5410","sea":"SS27","mcp":"TECHFIT VOLLEYBALL SHORTS","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"PRO-STRETCH CHINA (ZHONGSHAN)","ccnt":"CHINA","mLT":40,"tDays":19,"rNorm":61,"sLT":null,"rSpd":null},{"wn":"F2548WVB102YN","art":"KA4440","sea":"SS27","mcp":"HILO JERSEY","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"F2548WVB102","art":"JN2972","sea":"SS27","mcp":"HILO JERSEY","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"F2548WVB103YN","art":"KA4478","sea":"SS27","mcp":"HILO JERSEY","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"F2548WVB103","art":"JN2981","sea":"SS27","mcp":"HILO JERSEY","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"F2548WVB106Y","art":"JN2923","sea":"SS27","mcp":"QUICKSET JERSEY","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"TRIMCO GROUP (HONG KONG)","ccnt":"HONG KONG","mLT":24,"tDays":13,"rNorm":53,"sLT":null,"rSpd":null},{"wn":"F2548WVB106","art":"JN2932","sea":"SS27","mcp":"QUICKSET JERSEY","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"TRIMCO GROUP (HONG KONG)","ccnt":"HONG KONG","mLT":24,"tDays":13,"rNorm":53,"sLT":null,"rSpd":null},{"wn":"F2548WVB108Y","art":"JX6481","sea":"SS27","mcp":"QUICKSET JERSEY","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"TRIMCO GROUP (HONG KONG)","ccnt":"HONG KONG","mLT":24,"tDays":13,"rNorm":53,"sLT":null,"rSpd":null},{"wn":"F2548WVB108","art":"JX6486","sea":"SS27","mcp":"QUICKSET JERSEY","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"TRIMCO GROUP (HONG KONG)","ccnt":"HONG KONG","mLT":24,"tDays":13,"rNorm":53,"sLT":null,"rSpd":null},{"wn":"F2548WVB111","art":"KA0610","sea":"SS27","mcp":"VOLLEYBALL TIGHTS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"PRO-STRETCH CHINA (ZHONGSHAN)","ccnt":"CHINA","mLT":40,"tDays":19,"rNorm":46,"sLT":null,"rSpd":null},{"wn":"F2548YVB111Y","art":"KA0612","sea":"SS27","mcp":"VOLLEYBALL TIGHTS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"PRO-STRETCH CHINA (ZHONGSHAN)","ccnt":"CHINA","mLT":40,"tDays":19,"rNorm":46,"sLT":null,"rSpd":null},{"wn":"F2607M206","art":"KW1873","sea":"SS27","mcp":"GAMESET","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":null,"rSpd":null},{"wn":"F2607M207","art":"KW2035","sea":"SS27","mcp":"GAMESET","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":null,"rSpd":null},{"wn":"F2607M705","art":"KF7472","sea":"SS27","mcp":"ACECLUB","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":21,"rSpd":50},{"wn":"F2607W209","art":"KS3210","sea":"SS27","mcp":"GAMESET","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"F2607W210Z","art":"KW4472","sea":"FW26","mcp":"GAMESET","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":46,"sLT":25,"rSpd":46},{"wn":"F2648W401G","art":"KU6686","sea":"SS27","mcp":"VOLLEYBALL ARM SLEEVES","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":21,"rSpd":50},{"wn":"F2648WVB401Y","art":"KF0730","sea":"SS27","mcp":"VOLLEYBALL ARM SLEEVES","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"F2648WVB401","art":"KF0731","sea":"SS27","mcp":"VOLLEYBALL ARM SLEEVES","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"F2650MTR517","art":"KG1822","sea":"SS27","mcp":"HYBRID","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"BEMIS (HONGKONG)","ccnt":"HONG KONG","mLT":42,"tDays":13,"rNorm":35,"sLT":30,"rSpd":47},{"wn":"S2106GHTM300","art":"GN5720","sea":"SS27","mcp":"SQUADRA21","t1k":"AD4014","t1c":"MYANMAR","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":14,"tDays":27,"rNorm":49,"sLT":null,"rSpd":null},{"wn":"S2106GHTM400","art":"GN5776","sea":"SS27","mcp":"SQUADRA21","t1k":"AD4014","t1c":"MYANMAR","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":18,"rNorm":51,"sLT":21,"rSpd":51},{"wn":"S231CSPM142","art":"IC6976","sea":"SS27","mcp":"WORKOUT  ESSENTIALS MINIMAL BRANDING","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":21,"rSpd":50},{"wn":"S2450WTR634","art":"IN9298","sea":"SS27","mcp":"HYPERGLAM","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":21,"rSpd":50},{"wn":"S2450WTR640","art":"JW7661","sea":"SS27","mcp":"MOTION ESSENTIALS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":null,"rSpd":null},{"wn":"S2506GHTM011ML","art":"JG1129","sea":"SS27","mcp":"SQUADRA25","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":25,"tDays":2,"rNorm":63,"sLT":25,"rSpd":63},{"wn":"S2506GHTM011WL","art":"JJ1936","sea":"SS27","mcp":"SQUADRA25","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":25,"tDays":2,"rNorm":63,"sLT":25,"rSpd":63},{"wn":"S2506GHTM011YL","art":"JJ1939","sea":"SS27","mcp":"SQUADRA25","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":25,"tDays":2,"rNorm":63,"sLT":25,"rSpd":63},{"wn":"S2506GHTM012M","art":"JF2483","sea":"SS27","mcp":"SQUADRA25","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.C.I. (CHINA)","ccnt":"CHINA","mLT":25,"tDays":19,"rNorm":46,"sLT":25,"rSpd":46},{"wn":"S2506GHTM012Y","art":"JJ1942","sea":"SS27","mcp":"SQUADRA25","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.C.I. (CHINA)","ccnt":"CHINA","mLT":25,"tDays":19,"rNorm":46,"sLT":25,"rSpd":46},{"wn":"S2506GHTM801M","art":"JI9346","sea":"SS27","mcp":"REFEREE BASELAYER","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"BEMIS (HONGKONG)","ccnt":"HONG KONG","mLT":35,"tDays":13,"rNorm":57,"sLT":null,"rSpd":null},{"wn":"S2507M503B","art":"JI9257","sea":"SS27","mcp":"CLUB","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"S2507M503B","art":"JI9257","sea":"FW26","mcp":"CLUB","t1k":"AD4014","t1c":"MYANMAR","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":26,"rNorm":43,"sLT":21,"rSpd":43},{"wn":"S2507M503","art":"JD8639","sea":"SS27","mcp":"Club Tennis","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":21,"rSpd":50},{"wn":"S2507M503","art":"JD8639","sea":"SS27","mcp":"Club Tennis","t1k":"AD4014","t1c":"MYANMAR","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":26,"rNorm":43,"sLT":21,"rSpd":43},{"wn":"S2507M504","art":"JE0413","sea":"SS27","mcp":"Club Tennis","t1k":"AD4014","t1c":"MYANMAR","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":26,"rNorm":34,"sLT":30,"rSpd":34},{"wn":"S2507W210","art":"JN1985","sea":"SS27","mcp":"GAMESET","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"WILSON CHINA (GUANGZHOU)","ccnt":"CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":14,"rSpd":72},{"wn":"S2507W506G","art":"JC6727","sea":"SS27","mcp":"CLUB","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"JIAMEIR (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":14,"rSpd":72},{"wn":"S2507W506","art":"JH3365","sea":"SS27","mcp":"Club Tennis","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"JIAMEIR (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":80,"sLT":14,"rSpd":87},{"wn":"S2507W515","art":"JW2946","sea":"SS27","mcp":"Club Tennis","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":71,"sLT":30,"rSpd":71},{"wn":"S2507W519","art":"JN1969","sea":"SS27","mcp":"Club Tennis","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"JIAMEIR (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":14,"rSpd":57},{"wn":"S2550MTR516","art":"JF2670","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"BEMIS (HONGKONG)","ccnt":"HONG KONG","mLT":42,"tDays":13,"rNorm":35,"sLT":30,"rSpd":47},{"wn":"S2606GHTM011ML","art":"KA1677","sea":"SS27","mcp":"GOALKEEPING EXTRAS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":30,"tDays":2,"rNorm":73,"sLT":30,"rSpd":73},{"wn":"S2606GHTM011WL","art":"KA1679","sea":"SS27","mcp":"GOALKEEPING EXTRAS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":30,"tDays":2,"rNorm":58,"sLT":30,"rSpd":58},{"wn":"S2606GHTM011YL","art":"KA1678","sea":"SS27","mcp":"GOALKEEPING EXTRAS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":30,"tDays":2,"rNorm":73,"sLT":30,"rSpd":73},{"wn":"S2606GHTM012ML","art":"JZ9224","sea":"SS27","mcp":"GOALKEEPING EXTRAS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":30,"tDays":2,"rNorm":73,"sLT":30,"rSpd":73},{"wn":"S2606GHTM012WL","art":"JZ9226","sea":"SS27","mcp":"GOALKEEPING EXTRAS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":30,"tDays":2,"rNorm":73,"sLT":30,"rSpd":73},{"wn":"S2606GHTM012YL","art":"JZ9225","sea":"SS27","mcp":"GOALKEEPING EXTRAS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":30,"tDays":2,"rNorm":73,"sLT":30,"rSpd":73},{"wn":"S2606GHTM419MH","art":"KF5969","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":82,"sLT":21,"rSpd":82},{"wn":"S2606GHTM420MH","art":"KF5831","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":82,"sLT":21,"rSpd":82},{"wn":"S2606GHTM420ML","art":"KF5846","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":82,"sLT":21,"rSpd":82},{"wn":"S2606GHTM420ML","art":"KF5846","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4014","t1c":"MYANMAR","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":18,"rNorm":66,"sLT":21,"rSpd":66},{"wn":"S2606GHTM420WL","art":"KF5859","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":82,"sLT":21,"rSpd":82},{"wn":"S2606GHTM420YL","art":"KF5873","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":82,"sLT":21,"rSpd":82},{"wn":"S2606GHTM420YL","art":"KF5873","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4014","t1c":"MYANMAR","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":18,"rNorm":66,"sLT":21,"rSpd":66},{"wn":"S2606GHTT403W","art":"JZ6642","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"S2606GHTT403W","art":"JZ6641","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4014","t1c":"MYANMAR","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":18,"rNorm":51,"sLT":21,"rSpd":51},{"wn":"S2606GHTT403Y","art":"JZ6630","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"S2606GHTT403Y","art":"JZ6630","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4014","t1c":"MYANMAR","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":18,"rNorm":51,"sLT":21,"rSpd":51},{"wn":"S2606GHTT403","art":"JZ6650","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"S2606GHTT403","art":"JZ6650","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4014","t1c":"MYANMAR","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":18,"rNorm":51,"sLT":21,"rSpd":51},{"wn":"S2606GHTT410WS","art":"JZ9134","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":97,"sLT":21,"rSpd":97},{"wn":"S2606GHTT410W","art":"JZ6559","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4014","t1c":"MYANMAR","fLT":120,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":18,"rNorm":81,"sLT":21,"rSpd":81},{"wn":"S2606GHTT410Y","art":"JZ9130","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":97,"sLT":21,"rSpd":97},{"wn":"S2606GHTT410Y","art":"JZ9130","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4014","t1c":"MYANMAR","fLT":120,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":18,"rNorm":81,"sLT":21,"rSpd":81},{"wn":"S2606GHTT410","art":"JZ6557","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":97,"sLT":21,"rSpd":97},{"wn":"S2606GHTT410","art":"JZ6557","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4014","t1c":"MYANMAR","fLT":120,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":18,"rNorm":81,"sLT":21,"rSpd":81},{"wn":"S2606GHTT412M1","art":"KE9847","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"S2606GHTT412M1","art":"KE9848","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4014","t1c":"MYANMAR","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":18,"rNorm":51,"sLT":21,"rSpd":51},{"wn":"S2606GHTT412W","art":"JZ6547","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4014","t1c":"MYANMAR","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":18,"rNorm":51,"sLT":21,"rSpd":51},{"wn":"S2606GHTT412Y","art":"JZ6550","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"S2606GHTT412Y","art":"JZ6549","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4014","t1c":"MYANMAR","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":18,"rNorm":51,"sLT":21,"rSpd":51},{"wn":"S2606GHTT419WS","art":"JZ6534","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":82,"sLT":21,"rSpd":82},{"wn":"S2606GHTT419WS","art":"JZ6534","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4014","t1c":"MYANMAR","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":18,"rNorm":66,"sLT":21,"rSpd":66},{"wn":"S2606GHTT419W","art":"JZ2534","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4014","t1c":"MYANMAR","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":18,"rNorm":66,"sLT":21,"rSpd":66},{"wn":"S2606GHTT419Y","art":"JZ6524","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":82,"sLT":21,"rSpd":82},{"wn":"S2606GHTT419Y","art":"JZ6524","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4014","t1c":"MYANMAR","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":18,"rNorm":66,"sLT":21,"rSpd":66},{"wn":"S2606GHTT419","art":"JZ2513","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":82,"sLT":21,"rSpd":82},{"wn":"S2606GHTT419","art":"JZ2512","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4014","t1c":"MYANMAR","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":18,"rNorm":66,"sLT":21,"rSpd":66},{"wn":"S2606GHTT420W","art":"JZ2490","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":82,"sLT":21,"rSpd":82},{"wn":"S2606GHTT420W","art":"JZ2490","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4014","t1c":"MYANMAR","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":18,"rNorm":66,"sLT":21,"rSpd":66},{"wn":"S2606GHTT420Y","art":"JZ2522","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":82,"sLT":21,"rSpd":82},{"wn":"S2606GHTT420Y","art":"JZ2522","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4014","t1c":"MYANMAR","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":18,"rNorm":66,"sLT":21,"rSpd":66},{"wn":"S2606GHTT420","art":"JZ2501","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":82,"sLT":21,"rSpd":82},{"wn":"S2606GHTT420","art":"JZ2501","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4014","t1c":"MYANMAR","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":18,"rNorm":66,"sLT":21,"rSpd":66},{"wn":"S2606GHTT426Y","art":"KB3933","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":82,"sLT":21,"rSpd":82},{"wn":"S2606GHTT426Y","art":"KB3935","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4014","t1c":"MYANMAR","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":18,"rNorm":66,"sLT":21,"rSpd":66},{"wn":"S2606GHTT426","art":"KB3928","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":82,"sLT":21,"rSpd":82},{"wn":"S2606GHTT426","art":"KB3929","sea":"SS27","mcp":"ENTRADA26","t1k":"AD4014","t1c":"MYANMAR","fLT":105,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":18,"rNorm":66,"sLT":21,"rSpd":66},{"wn":"S2607W202","art":"KA4119","sea":"SS27","mcp":"GAMESET","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2607W501","art":"KF0914","sea":"SS27","mcp":"Club Tennis","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"JIAMEIR (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":14,"rSpd":57},{"wn":"S2607W507G","art":"KW8403","sea":"SS27","mcp":"CLUB","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"JIAMEIR (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":14,"rSpd":72},{"wn":"S26LM352","art":"KC3589","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"WEIXING (CHINA)","ccnt":"CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":14,"rSpd":57},{"wn":"S2706CHLF023Y","art":"KZ2881","sea":"SS27","mcp":"A CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"PAIHO TRIM (VIETNAM)","ccnt":"VIETNAM","mLT":21,"tDays":17,"rNorm":52,"sLT":21,"rSpd":52},{"wn":"S2706CHLF023","art":"KX8776","sea":"SS27","mcp":"A CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"PAIHO TRIM (VIETNAM)","ccnt":"VIETNAM","mLT":21,"tDays":17,"rNorm":52,"sLT":21,"rSpd":52},{"wn":"S2706CHLF053Y","art":"KZ2880","sea":"SS27","mcp":"A CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"PAIHO TRIM (VIETNAM)","ccnt":"VIETNAM","mLT":21,"tDays":17,"rNorm":52,"sLT":21,"rSpd":52},{"wn":"S2706CHLF053","art":"KZ2883","sea":"SS27","mcp":"A CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"PAIHO TRIM (VIETNAM)","ccnt":"VIETNAM","mLT":21,"tDays":17,"rNorm":52,"sLT":21,"rSpd":52},{"wn":"S2706CHLF054Y","art":"KZ2879","sea":"SS27","mcp":"A CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"S2706CHLF054","art":"KZ2882","sea":"SS27","mcp":"A CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"S2706GHLY014Y","art":"LG8117","sea":"SS27","mcp":"LAMINEYAMAL","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":14,"tDays":17,"rNorm":59,"sLT":null,"rSpd":null},{"wn":"S2706GHLY015Y","art":"LG8123","sea":"SS27","mcp":"LAMINEYAMAL","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":14,"tDays":17,"rNorm":59,"sLT":null,"rSpd":null},{"wn":"S2706GHLY016Y","art":"LG8127","sea":"SS27","mcp":"LAMINEYAMAL","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"S2706GHLY017Y","art":"LG9084","sea":"SS27","mcp":"LAMINEYAMAL","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"S2706GHLY018Y","art":"LG8116","sea":"SS27","mcp":"LAMINEYAMAL","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"S2706GHTM630M","art":"KV1521","sea":"SS27","mcp":"FORTORE27","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (CHINA)","ccnt":"CHINA","mLT":14,"tDays":19,"rNorm":57,"sLT":14,"rSpd":57},{"wn":"S2706GHTM630W","art":"KV1511","sea":"SS27","mcp":"FORTORE27","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (CHINA)","ccnt":"CHINA","mLT":14,"tDays":19,"rNorm":57,"sLT":14,"rSpd":57},{"wn":"S2706GHTM630Y","art":"KV1501","sea":"SS27","mcp":"FORTORE27","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (CHINA)","ccnt":"CHINA","mLT":14,"tDays":19,"rNorm":57,"sLT":14,"rSpd":57},{"wn":"S2706GHTM631M","art":"KV1557","sea":"SS27","mcp":"FORTORE27","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"S2706GHTM631W","art":"KV1532","sea":"SS27","mcp":"FORTORE27","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"S2706GHTM631Y","art":"KV1544","sea":"SS27","mcp":"FORTORE27","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"S2706GHTM700M","art":"KV4644","sea":"SS27","mcp":"TEAM EXTRAS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"S2706GHTM700W","art":"KV4636","sea":"SS27","mcp":"TEAM EXTRAS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"S2706GHTM700Y","art":"KV7059","sea":"SS27","mcp":"TEAM EXTRAS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"S2706LHCH200AMN","art":"KY0626","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"PLUS (JAPAN)","ccnt":"JAPAN","mLT":30,"tDays":18,"rNorm":42,"sLT":null,"rSpd":null},{"wn":"S2706LHCH200AUW","art":"KT1439","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"PLUS (JAPAN)","ccnt":"JAPAN","mLT":30,"tDays":18,"rNorm":42,"sLT":null,"rSpd":null},{"wn":"S2706LHCH200M","art":"KT3993","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"TRIMCO GROUP (HONG KONG)","ccnt":"HONG KONG","mLT":28,"tDays":13,"rNorm":49,"sLT":null,"rSpd":null},{"wn":"S2706LHCH200W","art":"KW4353","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"TRIMCO GROUP (HONG KONG)","ccnt":"HONG KONG","mLT":28,"tDays":13,"rNorm":49,"sLT":null,"rSpd":null},{"wn":"S2706LHCH201AUM","art":"KT1440","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"PLUS (JAPAN)","ccnt":"JAPAN","mLT":30,"tDays":18,"rNorm":57,"sLT":null,"rSpd":null},{"wn":"S2706LHCH201AUW","art":"KT1442","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"PLUS (JAPAN)","ccnt":"JAPAN","mLT":30,"tDays":18,"rNorm":57,"sLT":null,"rSpd":null},{"wn":"S2706LHCH201M","art":"KT3994","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"TRIMCO GROUP (HONG KONG)","ccnt":"HONG KONG","mLT":28,"tDays":13,"rNorm":49,"sLT":null,"rSpd":null},{"wn":"S2706LHDF101M","art":"KT2102","sea":"SS27","mcp":"SEC CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":42,"tDays":17,"rNorm":31,"sLT":null,"rSpd":null},{"wn":"S2706LHDF101W","art":"KT2099","sea":"SS27","mcp":"SEC CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":42,"tDays":17,"rNorm":31,"sLT":null,"rSpd":null},{"wn":"S2706LHDF101Y","art":"KT2101","sea":"SS27","mcp":"SEC CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":42,"tDays":17,"rNorm":31,"sLT":null,"rSpd":null},{"wn":"S2706LHDF102MK","art":"KT2096","sea":"SS27","mcp":"SEC CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"OUT OF THE BLUE BOX (THAILAND)","ccnt":"THAILAND","mLT":40,"tDays":2,"rNorm":48,"sLT":null,"rSpd":null},{"wn":"S2706LHDF103M","art":"KT2095","sea":"SS27","mcp":"SEC CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":42,"tDays":17,"rNorm":31,"sLT":null,"rSpd":null},{"wn":"S2706LHDF103W","art":"KT2098","sea":"SS27","mcp":"SEC CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":42,"tDays":17,"rNorm":31,"sLT":null,"rSpd":null},{"wn":"S2706LHDF103Y","art":"KW5722","sea":"SS27","mcp":"SEC CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":42,"tDays":17,"rNorm":31,"sLT":null,"rSpd":null},{"wn":"S2706LHDF201M","art":"KU7537","sea":"SS27","mcp":"SEC CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":42,"tDays":17,"rNorm":31,"sLT":null,"rSpd":null},{"wn":"S2706LHDF201W","art":"KU7534","sea":"SS27","mcp":"SEC CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":42,"tDays":17,"rNorm":31,"sLT":null,"rSpd":null},{"wn":"S2706LHDF201Y","art":"KU7535","sea":"SS27","mcp":"SEC CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":42,"tDays":17,"rNorm":31,"sLT":null,"rSpd":null},{"wn":"S2706LHDF202MK","art":"KU7530","sea":"SS27","mcp":"SEC CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"S2706LHDF203M","art":"KU7531","sea":"SS27","mcp":"SEC CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":42,"tDays":17,"rNorm":31,"sLT":null,"rSpd":null},{"wn":"S2706LHDF203W","art":"KU7536","sea":"SS27","mcp":"SEC CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":42,"tDays":17,"rNorm":31,"sLT":null,"rSpd":null},{"wn":"S2706LHDF203Y","art":"KU7532","sea":"SS27","mcp":"SEC CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":42,"tDays":17,"rNorm":31,"sLT":null,"rSpd":null},{"wn":"S2706LHDF301M","art":"KU7554","sea":"SS27","mcp":"SEC CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (CHINA)","ccnt":"CHINA","mLT":14,"tDays":19,"rNorm":57,"sLT":14,"rSpd":57},{"wn":"S2706LHDF301W","art":"KU7556","sea":"SS27","mcp":"SEC CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (CHINA)","ccnt":"CHINA","mLT":14,"tDays":19,"rNorm":57,"sLT":14,"rSpd":57},{"wn":"S2706LHDF301Y","art":"KU7550","sea":"SS27","mcp":"SEC CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (CHINA)","ccnt":"CHINA","mLT":14,"tDays":19,"rNorm":57,"sLT":14,"rSpd":57},{"wn":"S2706LHDF302MK","art":"KU7549","sea":"SS27","mcp":"SEC CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"S2706LHDF303M","art":"KU7551","sea":"SS27","mcp":"SEC CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"S2706LHDF303W","art":"KU7555","sea":"SS27","mcp":"SEC CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"S2706LHDF303Y","art":"KU7552","sea":"SS27","mcp":"SEC CLUBS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"THONG THAI (THA)","ccnt":"THAILAND","mLT":21,"tDays":2,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"S2706LHIF200AUW","art":"KS6388","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"PLUS (JAPAN)","ccnt":"JAPAN","mLT":30,"tDays":18,"rNorm":42,"sLT":null,"rSpd":null},{"wn":"S2706LHIF200AWM","art":"KX8317","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"PLUS (JAPAN)","ccnt":"JAPAN","mLT":30,"tDays":18,"rNorm":42,"sLT":null,"rSpd":null},{"wn":"S2706LHIF200M","art":"KS6382","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"OPSEC DELTA (CHINA)","ccnt":"HONG KONG","mLT":35,"tDays":13,"rNorm":42,"sLT":30,"rSpd":47},{"wn":"S2706LHIF200W","art":"KS6385","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"OPSEC DELTA (CHINA)","ccnt":"HONG KONG","mLT":30,"tDays":13,"rNorm":47,"sLT":30,"rSpd":47},{"wn":"S2706LHIF200Y","art":"KW5080","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"OPSEC DELTA (CHINA)","ccnt":"HONG KONG","mLT":30,"tDays":13,"rNorm":47,"sLT":30,"rSpd":47},{"wn":"S2706LHIF201AUM","art":"KS6389","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"PLUS (JAPAN)","ccnt":"JAPAN","mLT":30,"tDays":18,"rNorm":57,"sLT":null,"rSpd":null},{"wn":"S2706LHIF201AUW","art":"KS6391","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"PLUS (JAPAN)","ccnt":"JAPAN","mLT":30,"tDays":18,"rNorm":57,"sLT":null,"rSpd":null},{"wn":"S2706LHIF201M","art":"KS6383","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"OPSEC DELTA (CHINA)","ccnt":"HONG KONG","mLT":30,"tDays":13,"rNorm":47,"sLT":30,"rSpd":47},{"wn":"S2706LHIF201W","art":"KS6386","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"OPSEC DELTA (CHINA)","ccnt":"HONG KONG","mLT":30,"tDays":13,"rNorm":47,"sLT":30,"rSpd":47},{"wn":"S2706LHIF201Y","art":"KW5078","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"OPSEC DELTA (CHINA)","ccnt":"HONG KONG","mLT":30,"tDays":13,"rNorm":47,"sLT":30,"rSpd":47},{"wn":"S2706LHIF202","art":"KW5555","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.C.I. (CHINA)","ccnt":"CHINA","mLT":25,"tDays":19,"rNorm":46,"sLT":null,"rSpd":null},{"wn":"S2706LHIF203","art":"KW5554","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"WEIXING (CHINA)","ccnt":"CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":14,"rSpd":57},{"wn":"S2706LHPP100AUW","art":"KQ5909","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"AVERY DENNISON (CHINA)","ccnt":"CHINA","mLT":28,"tDays":19,"rNorm":58,"sLT":null,"rSpd":null},{"wn":"S2706LHPP100M","art":"KW1957","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":21,"tDays":17,"rNorm":52,"sLT":null,"rSpd":null},{"wn":"S2706LHPP100W","art":"KQ5935","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":21,"tDays":17,"rNorm":52,"sLT":null,"rSpd":null},{"wn":"S2706LHPP100Y","art":"KW1958","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":21,"tDays":17,"rNorm":52,"sLT":null,"rSpd":null},{"wn":"S2706LHPP101AUW","art":"KQ5918","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"SHINDO  (CHINA)","ccnt":"CHINA","mLT":30,"tDays":19,"rNorm":56,"sLT":null,"rSpd":null},{"wn":"S2706LHPP101W","art":"KQ5936","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":21,"tDays":17,"rNorm":52,"sLT":null,"rSpd":null},{"wn":"S2706LHPP200AWN","art":"KY0629","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"PLUS (JAPAN)","ccnt":"JAPAN","mLT":30,"tDays":18,"rNorm":57,"sLT":null,"rSpd":null},{"wn":"S2706LHPP200M","art":"KW1955","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":21,"tDays":17,"rNorm":52,"sLT":null,"rSpd":null},{"wn":"S2706LHPP200W","art":"KQ5943","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":21,"tDays":17,"rNorm":52,"sLT":null,"rSpd":null},{"wn":"S2706LHPP200Y","art":"KW1956","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":21,"tDays":17,"rNorm":52,"sLT":null,"rSpd":null},{"wn":"S2706LHPP201AUW","art":"KQ5889","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"PLUS (JAPAN)","ccnt":"JAPAN","mLT":30,"tDays":18,"rNorm":57,"sLT":null,"rSpd":null},{"wn":"S2706LHPP201W","art":"KQ5945","sea":"SS27","mcp":"B FEDERATIONS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":21,"tDays":17,"rNorm":52,"sLT":null,"rSpd":null},{"wn":"S2707M200","art":"KU8832","sea":"SS27","mcp":"GAMESET","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":76,"sLT":null,"rSpd":null},{"wn":"S2707M201","art":"KU8838","sea":"SS27","mcp":"GAMESET","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":76,"sLT":null,"rSpd":null},{"wn":"S2707M202V","art":"KU8827","sea":"SS27","mcp":"GAMESET","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"PAIHO TRIM (VIETNAM)","ccnt":"VIETNAM","mLT":25,"tDays":17,"rNorm":78,"sLT":25,"rSpd":78},{"wn":"S2707M202","art":"KU8820","sea":"SS27","mcp":"GAMESET","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"PAIHO TRIM (VIETNAM)","ccnt":"VIETNAM","mLT":25,"tDays":17,"rNorm":78,"sLT":25,"rSpd":78},{"wn":"S2707M203","art":"KU8829","sea":"SS27","mcp":"GAMESET","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"PAIHO TRIM (VIETNAM)","ccnt":"VIETNAM","mLT":25,"tDays":17,"rNorm":78,"sLT":25,"rSpd":78},{"wn":"S2707M204","art":"KV0323","sea":"SS27","mcp":"GAMESET","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":76,"sLT":null,"rSpd":null},{"wn":"S2707M300Z","art":"KW9151","sea":"SS27","mcp":"TENNIS CLASSICS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2707M302Z","art":"KW9153","sea":"SS27","mcp":"TENNIS CLASSICS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2707M400Z","art":"KW9156","sea":"SS27","mcp":"TENNIS CLASSICS","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":46,"sLT":25,"rSpd":46},{"wn":"S2707M400","art":"KV0390","sea":"SS27","mcp":"ROLAND GARROS PACK","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":null,"rSpd":null},{"wn":"S2707M401","art":"KV0388","sea":"SS27","mcp":"ROLAND GARROS PACK","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":null,"rSpd":null},{"wn":"S2707M402","art":"KV0395","sea":"SS27","mcp":"ROLAND GARROS PACK","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"BEMIS (HONGKONG)","ccnt":"HONG KONG","mLT":42,"tDays":13,"rNorm":50,"sLT":30,"rSpd":62},{"wn":"S2707M404","art":"LD4684","sea":"SS27","mcp":"ROLAND GARROS PACK","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.C.I. (VIETNAM BD)","ccnt":"VIETNAM","mLT":25,"tDays":17,"rNorm":63,"sLT":21,"rSpd":67},{"wn":"S2707M405","art":"LE5029","sea":"SS27","mcp":"ROLAND GARROS PACK","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":null,"rSpd":null},{"wn":"S2707M600Z","art":"LD7263","sea":"SS27","mcp":"TENNIS CLASSICS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2707M601","art":"KV9542","sea":"SS27","mcp":"TENNIS CLASSICS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2707M602","art":"KV9544","sea":"SS27","mcp":"TENNIS CLASSICS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2707M603","art":"KU9587","sea":"SS27","mcp":"TENNIS CLASSICS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2707M604","art":"KU9630","sea":"SS27","mcp":"TENNIS CLASSICS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2707M605","art":"KY5071","sea":"SS27","mcp":"TENNIS CLASSICS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2707M711","art":"LC8751","sea":"SS27","mcp":"CLUB","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"S2707W200","art":"KU8062","sea":"SS27","mcp":"GAMESET","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2707W201","art":"KU8061","sea":"SS27","mcp":"GAMESET","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2707W203","art":"KU8177","sea":"SS27","mcp":"GAMESET","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2707W204","art":"KU8060","sea":"SS27","mcp":"GAMESET","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":76,"sLT":25,"rSpd":76},{"wn":"S2707W205","art":"KU8059","sea":"SS27","mcp":"GAMESET","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2707W206","art":"KU8058","sea":"SS27","mcp":"GAMESET","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2707W207","art":"KV3181","sea":"SS27","mcp":"GAMESET","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":76,"sLT":25,"rSpd":76},{"wn":"S2707W400","art":"LF0659","sea":"SS27","mcp":"ROLAND GARROS PACK","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":76,"sLT":25,"rSpd":76},{"wn":"S2707W401","art":"LD5010","sea":"SS27","mcp":"ROLAND GARROS PACK","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":76,"sLT":25,"rSpd":76},{"wn":"S2707W402Z","art":"LF3252","sea":"SS27","mcp":"ROLAND GARROS PACK","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2707W404G","art":"KX3455","sea":"SS27","mcp":"TENNIS CLASSICS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2707W405G","art":"LD4844","sea":"SS27","mcp":"TENNIS CLASSICS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2707W407","art":"LF0662","sea":"SS27","mcp":"ROLAND GARROS PACK","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":76,"sLT":25,"rSpd":76},{"wn":"S2707W411","art":"LF0658","sea":"SS27","mcp":"ROLAND GARROS PACK","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2707W412","art":"LF0679","sea":"SS27","mcp":"ROLAND GARROS PACK","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.C.I. (VIETNAM BD)","ccnt":"VIETNAM","mLT":25,"tDays":17,"rNorm":63,"sLT":21,"rSpd":67},{"wn":"S2707W506","art":"KX8012","sea":"SS27","mcp":"CLUB","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"S2707W513","art":"KX8043","sea":"SS27","mcp":"CLUB","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.C.I. (CHINA)","ccnt":"CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":null,"rSpd":null},{"wn":"S2707W524","art":"KV4942","sea":"SS27","mcp":"CLUB","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.C.I. (VIETNAM BD)","ccnt":"VIETNAM","mLT":25,"tDays":17,"rNorm":63,"sLT":null,"rSpd":null},{"wn":"S2707W525Z","art":"LE5303","sea":"SS27","mcp":"CLUB","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"S2707W600","art":"KW0067","sea":"SS27","mcp":"TENNIS CLASSICS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2707W602G","art":"LH2734","sea":"SS27","mcp":"TENNIS CLASSICS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2707W602Z","art":"LE7689","sea":"SS27","mcp":"TENNIS CLASSICS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2707W603","art":"KW0066","sea":"SS27","mcp":"TENNIS CLASSICS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2707W604","art":"KU3683","sea":"SS27","mcp":"TENNIS CLASSICS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2707W605Z","art":"LE7790","sea":"SS27","mcp":"TENNIS CLASSICS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":25,"tDays":19,"rNorm":61,"sLT":25,"rSpd":61},{"wn":"S2707W606","art":"KY0491","sea":"SS27","mcp":"TENNIS CLASSICS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"PRO-STRETCH (VIETNAM)","ccnt":"VIETNAM","mLT":40,"tDays":17,"rNorm":48,"sLT":null,"rSpd":null},{"wn":"S2707W705","art":"KZ3041","sea":"SS27","mcp":"ADIDAS X BRAIN DEAD","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"PRO-STRETCH (VIETNAM)","ccnt":"VIETNAM","mLT":40,"tDays":17,"rNorm":48,"sLT":null,"rSpd":null},{"wn":"S2747HBM01","art":"KX0864","sea":"SS27","mcp":"HANDBALL INLINE RANGE","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"S2747HBM02","art":"KX0868","sea":"SS27","mcp":"HANDBALL INLINE RANGE","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"S2747HBW01","art":"KX0865","sea":"SS27","mcp":"HANDBALL INLINE RANGE","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"S2747HBW02","art":"KX0867","sea":"SS27","mcp":"HANDBALL INLINE RANGE","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"S2747HBY01","art":"KX0863","sea":"SS27","mcp":"HANDBALL INLINE RANGE","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"S2747HBY02","art":"KX0866","sea":"SS27","mcp":"HANDBALL INLINE RANGE","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"S2748WVB104Y","art":"KV5607","sea":"SS27","mcp":"HILO JERSEY","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"S2748WVB104","art":"KV3192","sea":"SS27","mcp":"HILO JERSEY","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"S27APMVL301","art":"LE2032","sea":"SS27","mcp":"BASICS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"OUT OF THE BLUE BOX (THAILAND)","ccnt":"THAILAND","mLT":25,"tDays":2,"rNorm":78,"sLT":21,"rSpd":82},{"wn":"S27LW975MIA","art":"KW4876","sea":"SS27","mcp":"CUSTOM COURT SPORTS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"TRIMCO GROUP (HONG KONG)","ccnt":"HONG KONG","mLT":31,"tDays":13,"rNorm":61,"sLT":25,"rSpd":67},{"wn":"S27LW975NEB","art":"KW4879","sea":"SS27","mcp":"CUSTOM COURT SPORTS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"TRIMCO GROUP (HONG KONG)","ccnt":"HONG KONG","mLT":31,"tDays":13,"rNorm":61,"sLT":25,"rSpd":67},{"wn":"S27LW975PSU","art":"KU3041","sea":"SS27","mcp":"CUSTOM COURT SPORTS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"TRIMCO GROUP (HONG KONG)","ccnt":"HONG KONG","mLT":31,"tDays":13,"rNorm":61,"sLT":25,"rSpd":67},{"wn":"S27LW975TAM","art":"KW4877","sea":"SS27","mcp":"CUSTOM COURT SPORTS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"TRIMCO GROUP (HONG KONG)","ccnt":"HONG KONG","mLT":31,"tDays":13,"rNorm":61,"sLT":25,"rSpd":67},{"wn":"S27LW975TEN","art":"KU3042","sea":"SS27","mcp":"CUSTOM COURT SPORTS","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"TRIMCO GROUP (HONG KONG)","ccnt":"HONG KONG","mLT":31,"tDays":13,"rNorm":61,"sLT":25,"rSpd":67},{"wn":"SMSUF22TFFT002F","art":"JE4607","sea":"SS27","mcp":"TECHFIT","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"AVERY DENNISON (VIETNAM)","ccnt":"VIETNAM","mLT":14,"tDays":17,"rNorm":59,"sLT":13,"rSpd":60},{"wn":"SMSUF25TFUS005W","art":"KB2552","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"PAIHO TRIM (VIETNAM)","ccnt":"VIETNAM","mLT":21,"tDays":17,"rNorm":52,"sLT":21,"rSpd":52},{"wn":"SMSUF25TFUS009M","art":"JY6015","sea":"SS27","mcp":"LOCKERROOM","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"BEMIS (HONGKONG)","ccnt":"HONG KONG","mLT":42,"tDays":13,"rNorm":35,"sLT":30,"rSpd":47},{"wn":"SMSUF25TFUS011M","art":"JY6012","sea":"SS27","mcp":"TECHFIT COLD READY","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"BEMIS (HONGKONG)","ccnt":"HONG KONG","mLT":42,"tDays":13,"rNorm":50,"sLT":30,"rSpd":62},{"wn":"SMSUF25TFUS011W","art":"KB2558","sea":"SS27","mcp":"TECHFIT CLIMAWARM","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.C.I. (VIETNAM BD)","ccnt":"VIETNAM","mLT":25,"tDays":17,"rNorm":48,"sLT":25,"rSpd":48},{"wn":"SMSUF25TFUS012M","art":"JY6026","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.C.I. (CHINA)","ccnt":"CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":21,"rSpd":50},{"wn":"SMSUF25TFUS013M","art":"JY6034","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.C.I. (CHINA)","ccnt":"CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":21,"rSpd":50},{"wn":"SMSUHBF26FUBJAM","art":"LE5014","sea":"SS27","mcp":"Fuechse Berlin Home Jersey Pack","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"SMSUHBF26FUBJAY","art":"LE5016","sea":"SS27","mcp":"Fuechse Berlin Home Jersey Pack","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"SMSUHBF26FUBJHM","art":"KW5880","sea":"SS27","mcp":"Fuechse Berlin Home Jersey Pack","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"SMSUHBF26FUBJHY","art":"KW5879","sea":"SS27","mcp":"Fuechse Berlin Home Jersey Pack","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"SMSUHBF26FUJAMB","art":"LF6045","sea":"SS27","mcp":"Fuechse Berlin Home Jersey Pack","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"SMSUHBF26FUSHMB","art":"LF6047","sea":"SS27","mcp":"Fuechse Berlin Home Jersey Pack","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"SMSUS25KNHBM08","art":"JL7676","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":21,"rSpd":50},{"wn":"SMSUS25KNHBW09","art":"JN2987","sea":"SS27","mcp":"TECHFIT","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"PAIHO TRIM (VIETNAM)","ccnt":"VIETNAM","mLT":21,"tDays":17,"rNorm":52,"sLT":21,"rSpd":52},{"wn":"SMSUS25TFFT001M","art":"JN3234","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"PAIHO TRIM (VIETNAM)","ccnt":"VIETNAM","mLT":21,"tDays":17,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"SMSUS25TFFT001M","art":"JN1472","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4014","t1c":"MYANMAR","fLT":90,"csup":"PAIHO TRIM (VIETNAM)","ccnt":"VIETNAM","mLT":21,"tDays":27,"rNorm":42,"sLT":21,"rSpd":42},{"wn":"SMSUS25TFFT001W","art":"JN3381","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"PAIHO TRIM (VIETNAM)","ccnt":"VIETNAM","mLT":21,"tDays":17,"rNorm":52,"sLT":21,"rSpd":52},{"wn":"SMSUS25TFFT001W","art":"JM7883","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4014","t1c":"MYANMAR","fLT":90,"csup":"PAIHO TRIM (VIETNAM)","ccnt":"VIETNAM","mLT":21,"tDays":27,"rNorm":42,"sLT":21,"rSpd":42},{"wn":"SMSUS25TFFT002M","art":"JL5624","sea":"SS27","mcp":"TECHFIT COLD RDY","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"PAIHO TRIM (VIETNAM)","ccnt":"VIETNAM","mLT":21,"tDays":17,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"SMSUS25TFFT002M","art":"JL5623","sea":"SS27","mcp":"TECHFIT COLD RDY","t1k":"AD4014","t1c":"MYANMAR","fLT":105,"csup":"PAIHO TRIM (VIETNAM)","ccnt":"VIETNAM","mLT":21,"tDays":27,"rNorm":57,"sLT":21,"rSpd":57},{"wn":"SMSUS25TFFT003M","art":"JN7352","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"BEMIS (HONGKONG)","ccnt":"HONG KONG","mLT":42,"tDays":13,"rNorm":50,"sLT":30,"rSpd":62},{"wn":"SMSUS25TFFT003M","art":"JN7345","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4014","t1c":"MYANMAR","fLT":90,"csup":"BEMIS (HONGKONG)","ccnt":"HONG KONG","mLT":42,"tDays":32,"rNorm":16,"sLT":30,"rSpd":28},{"wn":"SMSUS25TFFT003W","art":"JL6888","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.C.I. (VIETNAM BD)","ccnt":"VIETNAM","mLT":25,"tDays":17,"rNorm":48,"sLT":25,"rSpd":48},{"wn":"SMSUS25TFFT004M","art":"JL6508","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"BEMIS (HONGKONG)","ccnt":"HONG KONG","mLT":42,"tDays":13,"rNorm":50,"sLT":30,"rSpd":62},{"wn":"SMSUS25TFFT004M","art":"JL6507","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4014","t1c":"MYANMAR","fLT":90,"csup":"BEMIS (HONGKONG)","ccnt":"HONG KONG","mLT":42,"tDays":32,"rNorm":16,"sLT":30,"rSpd":28},{"wn":"SMSUS25TFFT004W","art":"JM0680","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.C.I. (VIETNAM BD)","ccnt":"VIETNAM","mLT":25,"tDays":17,"rNorm":63,"sLT":25,"rSpd":63},{"wn":"SMSUS25TFFT013M","art":"JP4674","sea":"SS27","mcp":"TECHFIT FOUNDATION","t1k":"AD4014","t1c":"MYANMAR","fLT":105,"csup":"PAIHO TRIM (VIETNAM)","ccnt":"VIETNAM","mLT":21,"tDays":27,"rNorm":57,"sLT":21,"rSpd":57},{"wn":"SMSUS26HBFRR07M","art":"KG7510","sea":"SS27","mcp":"FRENCH HANDBALL FEDERATION REPLICA","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"SMSUS26HBFRR07W","art":"KG7511","sea":"SS27","mcp":"FRENCH HANDBALL FEDERATION REPLICA","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"SMSUS26HBFRR07Y","art":"KG7513","sea":"SS27","mcp":"FRENCH HANDBALL FEDERATION REPLICA","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"SMSUS26HBFRR08M","art":"KG7514","sea":"SS27","mcp":"FRENCH HANDBALL FEDERATION REPLICA","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"SMSUS26HBFRR08Y","art":"KG7524","sea":"SS27","mcp":"FRENCH HANDBALL FEDERATION REPLICA","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"SMSUS26HBFRR09M","art":"KG7525","sea":"SS27","mcp":"FRENCH HANDBALL FEDERATION REPLICA","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"SMSUS26HBFRR09Y","art":"KG7528","sea":"SS27","mcp":"FRENCH HANDBALL FEDERATION REPLICA","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":30,"tDays":19,"rNorm":41,"sLT":30,"rSpd":41},{"wn":"TB1617S26","art":"KY2825","sea":"FW26","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"WEIXING (CHINA)","ccnt":"CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":null,"rSpd":null},{"wn":"TB1618S26","art":"KV6231","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.C.I. (CHINA)","ccnt":"CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":null,"rSpd":null},{"wn":"TG2010F26","art":"KG9084","sea":"FW26","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"WEIXING (CHINA)","ccnt":"CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":null,"rSpd":null},{"wn":"TG2011S27CF","art":"LE5141","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"PAIHO (WUXI)","ccnt":"CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"TG2011S27","art":"KV5798","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"PAIHO (WUXI)","ccnt":"CHINA","mLT":21,"tDays":19,"rNorm":80,"sLT":21,"rSpd":80},{"wn":"TG2012S27CF","art":"LE5143","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"PAIHO (WUXI)","ccnt":"CHINA","mLT":21,"tDays":19,"rNorm":80,"sLT":21,"rSpd":80},{"wn":"TG2020S27","art":"KV5810","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.C.I. (CHINA)","ccnt":"CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":null,"rSpd":null},{"wn":"TG2200S27","art":"KV5812","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.C.I. (CHINA)","ccnt":"CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":null,"rSpd":null},{"wn":"TG4028S26","art":"KQ7768","sea":"FW26","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"PAIHO TRIM (VIETNAM)","ccnt":"VIETNAM","mLT":21,"tDays":17,"rNorm":52,"sLT":21,"rSpd":52},{"wn":"TG4029S27","art":"KV5814","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.C.I. (CHINA)","ccnt":"CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":null,"rSpd":null},{"wn":"TG6359S27","art":"KV5819","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.C.I. (CHINA)","ccnt":"CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"TG6400S27","art":"KV5820","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"PAIHO TRIM (VIETNAM)","ccnt":"VIETNAM","mLT":21,"tDays":17,"rNorm":67,"sLT":21,"rSpd":67},{"wn":"TM1066S24","art":"IQ2932","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":21,"rSpd":50},{"wn":"TM1168S26LC","art":"HZ6881","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"TM1168S26","art":"HZ6876","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":21,"rSpd":50},{"wn":"TM1169S26","art":"JY5480","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":21,"rSpd":50},{"wn":"TM1171S26","art":"HZ6887","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"WEIXING (CHINA)","ccnt":"CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":14,"rSpd":57},{"wn":"TM1172S26","art":"JY5470","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"TM1176S26","art":"KC5547","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":21,"rSpd":50},{"wn":"TM1377S24H","art":"IN6414","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":21,"rSpd":50},{"wn":"TM1377S24LC","art":"IN6418","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":21,"rSpd":50},{"wn":"TM1377S24","art":"IQ2935","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":21,"rSpd":50},{"wn":"TM4633S26","art":"KC5552","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":21,"rSpd":50},{"wn":"TM4663S27LC","art":"KU9117","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"TM4663S27","art":"KU9121","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"TMA596S24","art":"IQ2977","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"OUT OF THE BLUE BOX (THAILAND)","ccnt":"THAILAND","mLT":25,"tDays":2,"rNorm":63,"sLT":null,"rSpd":null},{"wn":"TW3002S27OG","art":"KU8709","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"WEIXING (CHINA)","ccnt":"CHINA","mLT":21,"tDays":19,"rNorm":80,"sLT":14,"rSpd":87},{"wn":"TW3004S27OG","art":"KU8711","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"TRIMCO GROUP (HONG KONG)","ccnt":"HONG KONG","mLT":24,"tDays":13,"rNorm":83,"sLT":null,"rSpd":null},{"wn":"TW3101S27OG","art":"KU6261","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"PRO-STRETCH (VIETNAM)","ccnt":"VIETNAM","mLT":40,"tDays":17,"rNorm":48,"sLT":21,"rSpd":67},{"wn":"TW3102S27","art":"KV4973","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"TW3103S27","art":"KV4990","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":80,"sLT":21,"rSpd":80},{"wn":"TW3107S27","art":"KV5071","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"TW3108S27","art":"KV5080","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"TW3318S26SSV1","art":"KX3852","sea":"FW26","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"STAPROS (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":14,"rSpd":57},{"wn":"TW3318S26","art":"JX6646","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"TW3319F26","art":"KR8590","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"OUT OF THE BLUE BOX (THAILAND)","ccnt":"THAILAND","mLT":25,"tDays":2,"rNorm":78,"sLT":21,"rSpd":82},{"wn":"TW3926F25","art":"KC5110","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":21,"rSpd":50},{"wn":"TW3934F26","art":"KG4379","sea":"FW26","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"OUT OF THE BLUE BOX (THAILAND)","ccnt":"THAILAND","mLT":25,"tDays":2,"rNorm":63,"sLT":21,"rSpd":67},{"wn":"TW3936F26","art":"KU9998","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"OUT OF THE BLUE BOX (THAILAND)","ccnt":"THAILAND","mLT":25,"tDays":2,"rNorm":78,"sLT":21,"rSpd":82},{"wn":"TW3938S27","art":"KU4022","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"TW3939F26","art":"KG4293","sea":"FW26","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"OUT OF THE BLUE BOX (THAILAND)","ccnt":"THAILAND","mLT":25,"tDays":2,"rNorm":63,"sLT":21,"rSpd":67},{"wn":"TW3939S27","art":"LE5135","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"PAIHO (WUXI)","ccnt":"CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"TW4313S26LC","art":"KG2741","sea":"FW26","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.C.I. (VIETNAM BD)","ccnt":"VIETNAM","mLT":21,"tDays":17,"rNorm":52,"sLT":null,"rSpd":null},{"wn":"TW4313S26","art":"KB9098","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.C.I. (CHINA)","ccnt":"CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":null,"rSpd":null},{"wn":"TW4330F26","art":"KG4298","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"OUT OF THE BLUE BOX (THAILAND)","ccnt":"THAILAND","mLT":25,"tDays":2,"rNorm":63,"sLT":21,"rSpd":67},{"wn":"TW4334S27","art":"KV5024","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"TW4354S27","art":"KU4037","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"TRIMCO GROUP (VIETNAM)","ccnt":"VIETNAM","mLT":24,"tDays":17,"rNorm":49,"sLT":null,"rSpd":null},{"wn":"TW6922S25","art":"JE7398","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"TW6938S26","art":"JX6680","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"TW6943S26","art":"KD4526","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"PAIHO (WUXI)","ccnt":"CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"TW6949F26","art":"KF9469","sea":"FW26","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"OUT OF THE BLUE BOX (THAILAND)","ccnt":"THAILAND","mLT":25,"tDays":2,"rNorm":63,"sLT":21,"rSpd":67},{"wn":"TW6954S27P","art":"KV2508","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"WEIXING (CHINA)","ccnt":"CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":null,"rSpd":null},{"wn":"TW6954S27","art":"KV2512","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"WEIXING (CHINA)","ccnt":"CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":null,"rSpd":null},{"wn":"TW6956S27","art":"KV5004","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"TW6957S27","art":"KZ1512","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"TW6958S27T","art":"LH0129","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":21,"rSpd":50},{"wn":"TW6958S27","art":"KZ1515","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":120,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":80,"sLT":21,"rSpd":80},{"wn":"TW6960S27","art":"KU3034","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"TWVA1000S27","art":"KX9703","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65},{"wn":"TWVA4000S27","art":"KX9702","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":90,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":50,"sLT":21,"rSpd":50},{"wn":"TWVA6000S27","art":"KX9699","sea":"SS27","mcp":"","t1k":"AD4001","t1c":"THAILAND","fLT":105,"csup":"E.TEXTINT (TAIWAN)","ccnt":"TAIWAN, PROVINCE OF CHINA","mLT":21,"tDays":19,"rNorm":65,"sLT":21,"rSpd":65}];
-var EMBEDDED_DATE = '2026-05-22';     // e.g. "2026-05-18"
-
-// ── HARDCODED TRANSIT LOOKUP (MAX ALL INCLUDE per destination|coo) ──
-// Source: TRANSIT TIME 2026.xlsx — updated 2026-04-28
-// Key format: "{destination}|{coo}"  (both normalised with normC)
-var transitLookup = {
-  // ── Myanmar (AD4014) ──────────────────────────────────────────────
-  'myanmar|cambodia'  : 18,
-  'myanmar|china'     : 26,   // NINGBO 25, SHANGHAI 26, SHEKOU 19 → max 26
-  'myanmar|hong kong' : 32,
-  'myanmar|taiwan'    : 36,   // KAOSHUING 36, KEELUNG 33, TAICHUNG 33 → max 36
-  'myanmar|thailand'  : 18,
-  'myanmar|vietnam'   : 27,   // HAIPHONG 27, HOCHIMINH 22 → max 27
-  // ── Thailand (AD4001) ─────────────────────────────────────────────
-  'thailand|cambodia' : 28,   // FCL 11, LCL via Singapore 28 → max 28
-  'thailand|china'    : 19,   // SHANGHAI 19, SHEKOU 13, XIAMEN 15 → max 19
-  'thailand|hong kong': 13,
-  'thailand|indonesia': 21,
-  'thailand|japan'    : 18,
-  'thailand|sri lanka': 28,
-  'thailand|taiwan'   : 18,   // KEELUNG 14/18 → max 18
-  'thailand|vietnam'  : 17,   // HAIPHONG 17, HOCHIMINH 11 → max 17
-  'thailand|thailand' : 2     // domestic / truck
-};
-
-// ── file inputs ──
-document.getElementById('bom-input').addEventListener('change',function(e){
-  bomFile=e.target.files[0]||null;
-  document.getElementById('bom-name').textContent=bomFile?bomFile.name:'';
-  document.getElementById('bom-zone').classList.toggle('loaded',!!bomFile);
-  checkReady();
-});
-function checkReady(){ document.getElementById('btn-load').disabled=!bomFile; }
-
-// ── debounced inputs ──
-document.getElementById('d-search').addEventListener('input',function(){ clearTimeout(timerD);timerD=setTimeout(applyD,300); });
-document.getElementById('d-wn').addEventListener('input',function(){ clearTimeout(timerD);timerD=setTimeout(applyD,300); });
-['sf-wn','sf-art','sf-flt','sf-csup','sf-mlt','sf-tlt','sf-rnorm','sf-slt','sf-rspd'].forEach(function(id){
-  document.getElementById(id).addEventListener('input',function(){ clearTimeout(timerS);timerS=setTimeout(applyS,300); });
-});
-['d-t1c','d-t1k','d-t2c','d-sea'].forEach(function(id){ document.getElementById(id).addEventListener('change',applyD); });
-['sf-t1k','sf-sea','sf-mcp','sf-t1c','sf-t2c'].forEach(function(id){ document.getElementById(id).addEventListener('change',applyS); });
-
-// ── helpers ──
-function readAB(f){ return new Promise(function(res,rej){ var r=new FileReader(); r.onload=function(e){res(e.target.result);}; r.onerror=rej; r.readAsArrayBuffer(f); }); }
-function toNum(v){ if(v===null||v===undefined||v==='')return null; var n=parseFloat(v); return isNaN(n)?null:n; }
-function esc(v){ return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-function normC(v){
-  if(!v)return'';
-  var n=String(v).toLowerCase().trim();
-  if(n.includes('china'))return'china';
-  if(n.includes('viet'))return'vietnam';
-  if(n.includes('cambodia'))return'cambodia';
-  if(n.includes('myanmar')||n.includes('burma'))return'myanmar';
-  if(n.includes('thai'))return'thailand';
-  if(n.includes('indonesia'))return'indonesia';
-  if(n.includes('bangladesh'))return'bangladesh';
-  if(n.includes('india')&&!n.includes('indo'))return'india';
-  if(n.includes('turkey')||n.includes('türkiye'))return'turkey';
-  if(n.includes('taiwan'))return'taiwan';
-  if(n.includes('korea'))return'korea';
-  if(n.includes('pakistan'))return'pakistan';
-  if(n.includes('sri lanka'))return'sri lanka';
-  if(n.includes('hong kong')||n.includes('hongkong'))return'hong kong';
-  if(n.includes('japan'))return'japan';
-  return n;
-}
-
-// ── parse BOM ──
-function parseBOM(wb){
-  var ws=wb.Sheets[wb.SheetNames[0]];
-  var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
-  var hIdx=0,best=0;
-  for(var i=0;i<Math.min(rows.length,15);i++){
-    var c=rows[i].filter(function(v){return v!==null;}).length;
-    if(c>best){best=c;hIdx=i;}
-  }
-  var ci={};
-  rows[hIdx].forEach(function(h,idx){if(h)ci[String(h)]=idx;});
-  function g(row,name){var idx=ci[name];return idx!==undefined?row[idx]:null;}
-
-  var out=[];
-  for(var i=hIdx+1;i<rows.length;i++){
-    var row=rows[i];
-    if(!row||row.every(function(v){return v===null;}))continue;
-    if(String(g(row,'T1 Factory CODE')||'')==='AD4013')continue;
-
-    var t1c=String(g(row,'T1 Factory Country')||'');
-    var t2c=String(g(row,'T2 Supplier Country')||'');
-    var tKey=normC(t1c)+'|'+normC(t2c);
-    var transit=transitLookup.hasOwnProperty(tKey)?transitLookup[tKey]:null;
-
-    var mLT=toNum(g(row,'Material Supplier Lead Time'));
-    var sLT=toNum(g(row,'Material Supplier Speed Lead Time'));
-    var fLT=toNum(g(row,'Article Factory Leadtime'));
-    var tot=(mLT!==null&&fLT!==null&&transit!==null)?(mLT+transit+fLT):((mLT!==null&&fLT!==null)?(mLT+fLT):null);
-
-    out.push({
-      wn  :String(g(row,'Working Number')||''),
-      t1k :String(g(row,'T1 Factory CODE')||''),
-      t1n :String(g(row,'T1 Factory NAME')||''),
-      t1c :t1c,
-      t2n :String(g(row,'T2 Supplier NAME')||''),
-      t2c :t2c,
-      art :String(g(row,'Article')||''),
-      sea :String(g(row,'Season')||''),
-      mcp :String(g(row,'Model Collection Pack')||''),
-      mcd :String(g(row,'Material CODE')||''),
-      mnm :String(g(row,'Material NAME')||''),
-      bpn :String(g(row,'BOM Part Name')||''),
-      mLT :mLT, sLT:sLT, fLT:fLT, transit:transit, tot:tot
-    });
-  }
-  return out;
-}
-
-// ── build summary (one row per Working Number + T1 Factory Code) ──
-function buildSummary(){
-  var grp={};
-  allData.forEach(function(r){
-    if(!r.wn)return;
-    var key=r.wn+'|||'+r.t1k;
-    if(!grp[key])grp[key]=[];
-    grp[key].push(r);
-  });
-  var out=[];
-  Object.keys(grp).sort().forEach(function(key){
-    var wn=key.split('|||')[0];
-    var rows=grp[key];
-    // Helper: transit days for a row
-    function rowT(r){
-      var d=(r.t1k==='AD4014')?'myanmar':(r.t1k==='AD4001')?'thailand':normC(r.t1c);
-      return transitLookup[d+'|'+normC(r.t2c)]||0;
-    }
-    // Critical row = highest mLT; ties broken by longest transit time
-    var maxMLT=0;
-    rows.forEach(function(r){ if((r.mLT||0)>maxMLT)maxMLT=(r.mLT||0); });
-    var tied=rows.filter(function(r){ return(r.mLT||0)===maxMLT; });
-    var crit=tied[0];
-    for(var i=1;i<tied.length;i++){
-      if(rowT(tied[i])>rowT(crit))crit=tied[i];
-    }
-    // Destination: AD4014→Myanmar, AD4001→Thailand, else derive from T1 country
-    var dest=(crit.t1k==='AD4014')?'myanmar':(crit.t1k==='AD4001')?'thailand':normC(crit.t1c);
-    var coo=normC(crit.t2c);
-    var tDays=transitLookup.hasOwnProperty(dest+'|'+coo)?transitLookup[dest+'|'+coo]:null;
-    var rNorm=(crit.fLT!==null&&crit.mLT!==null&&tDays!==null)?(crit.fLT-crit.mLT-tDays):null;
-    var rSpd =(crit.fLT!==null&&crit.sLT!==null&&tDays!==null)?(crit.fLT-crit.sLT-tDays):null;
-    out.push({wn:wn,art:crit.art,sea:crit.sea,mcp:crit.mcp,t1k:crit.t1k,t1c:crit.t1c,
-      fLT:crit.fLT,csup:crit.t2n,ccnt:crit.t2c,mLT:crit.mLT,tDays:tDays,
-      rNorm:rNorm,sLT:crit.sLT,rSpd:rSpd});
-  });
-  return out;
-}
-
-// ── populate dropdowns ──
-function fillSel(id,vals){
-  var sel=document.getElementById(id);
-  while(sel.options.length>1)sel.remove(1);
-  [...new Set(vals)].filter(Boolean).sort().forEach(function(v){
-    var o=document.createElement('option');o.value=o.textContent=v;sel.appendChild(o);
-  });
-}
-function populateDDs(){
-  fillSel('d-t1c',allData.map(function(r){return r.t1c;}));
-  fillSel('d-t1k',allData.map(function(r){return r.t1k;}));
-  fillSel('d-t2c',allData.map(function(r){return r.t2c;}));
-  fillSel('d-sea',allData.map(function(r){return r.sea;}));
-  fillSel('sf-t1k',summaryData.map(function(r){return r.t1k;}));
-  fillSel('sf-sea',summaryData.map(function(r){return r.sea;}));
-  fillSel('sf-mcp',summaryData.map(function(r){return r.mcp;}));
-  fillSel('sf-t1c',summaryData.map(function(r){return r.t1c;}));
-  fillSel('sf-t2c',summaryData.map(function(r){return r.ccnt;}));
-}
-
-// ── main process ──
-async function processData(){
-  document.getElementById('error-box').style.display='none';
-  document.getElementById('upload-section').style.display='none';
-  document.getElementById('loading').style.display='block';
-  try{
-    var bAB=await readAB(bomFile);
-    allData=parseBOM(XLSX.read(bAB,{type:'array'}));
-    if(!allData.length)throw new Error('No data rows found in the BOM file.');
-    summaryData=buildSummary();
-    populateDDs();
-    applyD(); applyS();
-    document.getElementById('loading').style.display='none';
-    document.getElementById('data-section').style.display='block';
-    document.getElementById('btn-share').style.display='block';
-    document.getElementById('btn-publish').style.display='block';
-  }catch(err){
-    document.getElementById('loading').style.display='none';
-    document.getElementById('upload-section').style.display='block';
-    var eb=document.getElementById('error-box');
-    eb.textContent='Error: '+err.message; eb.style.display='block';
-    console.error(err);
-  }
-}
-
-// ── auto-load from server on page start ──
-var BOM_SEASON = (new URLSearchParams(window.location.search).get('season')||'SS27');
-
-async function loadFromServer(){
-  var h=location.hostname;
-  var isLocal=(h==='localhost'||h==='127.0.0.1'||h.startsWith('192.168'));
-
-  if(!isLocal){
-    document.getElementById('loading').style.display='none';
-    if(typeof EMBEDDED_DATA!=='undefined'&&EMBEDDED_DATA&&EMBEDDED_DATA.length){
-      summaryData=EMBEDDED_DATA;
-      filteredS=summaryData.slice();
-      fillSel('sf-t1k',summaryData.map(function(r){return r.t1k;}));
-      fillSel('sf-sea',summaryData.map(function(r){return r.sea;}));
-      fillSel('sf-mcp',summaryData.map(function(r){return r.mcp;}));
-      fillSel('sf-t1c',summaryData.map(function(r){return r.t1c;}));
-      applyS();
-      document.getElementById('data-section').style.display='block';
-      document.getElementById('tbtn-detail').style.display='none';
-      showTab('summary');
-      document.querySelector('.header p').textContent+=' — Published '+EMBEDDED_DATE;
-    }else{
-      document.getElementById('no-data-msg').style.display='block';
-    }
-    return;
-  }
-
-  document.getElementById('loading').style.display='block';
-  document.getElementById('no-data-msg').style.display='none';
-  document.getElementById('data-section').style.display='none';
-  try{
-    var resp=await fetch('/api/file?season='+BOM_SEASON+'&type=Trim',{cache:'no-cache'});
-    if(!resp.ok)throw new Error('Data not available for '+BOM_SEASON+' Trim.');
-    var buf=await resp.arrayBuffer();
-    allData=parseBOM(XLSX.read(new Uint8Array(buf),{type:'array'}));
-    if(!allData.length)throw new Error('No rows found in the BOM file.');
-    summaryData=buildSummary();
-    filteredS=summaryData.slice();
-    populateDDs(); applyD(); applyS();
-    document.getElementById('loading').style.display='none';
-    document.getElementById('data-section').style.display='block';
-    document.getElementById('tbtn-detail').style.display='none';
-    showTab('summary');
-    document.querySelector('.header p').textContent+=' — Data loaded from server';
-  }catch(err){
-    document.getElementById('loading').style.display='none';
-    var nm=document.getElementById('no-data-msg');
-    nm.style.display='block';
-    nm.innerHTML='<div style="font-size:36px;margin-bottom:12px">⚠️</div>'+
-      '<div style="font-size:16px;font-weight:700;color:#c62828;margin-bottom:8px">'+err.message+'</div>'+
-      '<div style="font-size:13px">Make sure the server is running:<br><b>http://192.168.71.138:8501/</b></div>';
-    console.error(err);
-  }
-}
-
-window.addEventListener('DOMContentLoaded',async function(){
-  document.querySelector('.header h1').textContent+=' — '+BOM_SEASON;
-  document.getElementById('btn-back').href='index.html?season='+BOM_SEASON;
-  await loadFromServer();
-  if(localStorage.getItem('bomx_admin')==='c29waXRhLnZhOjE='){
-    document.getElementById('tbtn-detail').style.display='';
-    document.getElementById('btn-edit-transit').style.display='';
-    document.querySelector('.btn-admin').textContent='🔓 Admin';
-  }
-});
-// ── tab switch ──
-function showTab(t){
-  document.getElementById('tab-detail').style.display =t==='detail' ?'block':'none';
-  document.getElementById('tab-summary').style.display=t==='summary'?'block':'none';
-  document.getElementById('tbtn-detail').classList.toggle('active', t==='detail');
-  document.getElementById('tbtn-summary').classList.toggle('active',t==='summary');
-}
-
-// ── detail filters ──
-function applyD(){
-  var srch=document.getElementById('d-search').value.toLowerCase();
-  var t1c =document.getElementById('d-t1c').value;
-  var t1k =document.getElementById('d-t1k').value;
-  var t2c =document.getElementById('d-t2c').value;
-  var sea =document.getElementById('d-sea').value;
-  var wn  =document.getElementById('d-wn').value.toLowerCase();
-  filteredD=allData.filter(function(r){
-    if(t1c&&r.t1c!==t1c)return false;
-    if(t1k&&r.t1k!==t1k)return false;
-    if(t2c&&r.t2c!==t2c)return false;
-    if(sea&&r.sea!==sea)return false;
-    if(wn&&!r.wn.toLowerCase().includes(wn))return false;
-    if(srch){
-      var h=[r.wn,r.t1k,r.t1n,r.t1c,r.t2n,r.t2c,r.art,r.sea,r.mcd,r.mnm,r.bpn].join(' ').toLowerCase();
-      if(!h.includes(srch))return false;
-    }
-    return true;
-  });
-  dPage=1; renderDStats(); renderDTable();
-}
-function clearDetail(){
-  ['d-search','d-wn'].forEach(function(id){document.getElementById(id).value='';});
-  ['d-t1c','d-t1k','d-t2c','d-sea'].forEach(function(id){document.getElementById(id).value='';});
-  applyD();
-}
-
-// ── numeric filter helper: >=N  <=N  >N  <N  =N  or plain contains ──
-function matchNum(val,f){
-  if(val===null||val===undefined)return false;
-  var n=parseFloat(val); if(isNaN(n))return false;
-  f=f.trim();
-  if(f.startsWith('>='))return n>=parseFloat(f.slice(2));
-  if(f.startsWith('<='))return n<=parseFloat(f.slice(2));
-  if(f.startsWith('>')) return n> parseFloat(f.slice(1));
-  if(f.startsWith('<')) return n< parseFloat(f.slice(1));
-  if(f.startsWith('=')) return n===parseFloat(f.slice(1));
-  return String(n).includes(f);
-}
-
-// ── summary filters ──
-function applyS(){
-  var t1k  =document.getElementById('sf-t1k').value;
-  var sea  =document.getElementById('sf-sea').value;
-  var mcp  =document.getElementById('sf-mcp').value;
-  var t1c  =document.getElementById('sf-t1c').value;
-  var t2c  =document.getElementById('sf-t2c').value;
-  var wn   =document.getElementById('sf-wn').value.toLowerCase();
-  var art  =document.getElementById('sf-art').value.toLowerCase();
-  var csup =document.getElementById('sf-csup').value.toLowerCase();
-  var flt  =document.getElementById('sf-flt').value.trim();
-  var mlt  =document.getElementById('sf-mlt').value.trim();
-  var tlt  =document.getElementById('sf-tlt').value.trim();
-  var rnorm=document.getElementById('sf-rnorm').value.trim();
-  var slt  =document.getElementById('sf-slt').value.trim();
-  var rspd =document.getElementById('sf-rspd').value.trim();
-  filteredS=summaryData.filter(function(r){
-    if(t1k&&r.t1k!==t1k)return false;
-    if(sea&&r.sea!==sea)return false;
-    if(mcp&&r.mcp!==mcp)return false;
-    if(t1c&&r.t1c!==t1c)return false;
-    if(t2c&&r.ccnt!==t2c)return false;
-    if(wn&&!r.wn.toLowerCase().includes(wn))return false;
-    if(art&&!String(r.art||'').toLowerCase().includes(art))return false;
-    if(csup&&!String(r.csup||'').toLowerCase().includes(csup))return false;
-    if(flt&&!matchNum(r.fLT,flt))return false;
-    if(mlt&&!matchNum(r.mLT,mlt))return false;
-    if(tlt&&!matchNum(r.tDays,tlt))return false;
-    if(rnorm&&!matchNum(r.rNorm,rnorm))return false;
-    if(slt&&!matchNum(r.sLT,slt))return false;
-    if(rspd&&!matchNum(r.rSpd,rspd))return false;
-    return true;
-  });
-  sPage=1; renderSStats(); renderSTable();
-}
-function clearSummary(){
-  ['sf-wn','sf-art','sf-flt','sf-csup','sf-mlt','sf-tlt','sf-rnorm','sf-slt','sf-rspd'].forEach(function(id){document.getElementById(id).value='';});
-  ['sf-t1k','sf-sea','sf-mcp','sf-t1c','sf-t2c'].forEach(function(id){document.getElementById(id).value='';});
-  applyS();
-}
-
-// ── stats ──
-function renderDStats(){
-  var ua=new Set(filteredD.map(function(r){return r.art;})).size;
-  var uw=new Set(filteredD.map(function(r){return r.wn;})).size;
-  document.getElementById('d-stats').innerHTML=
-    '<div class="stat">Rows: <span class="stat-val">'+filteredD.length.toLocaleString()+'</span> of '+allData.length.toLocaleString()+'</div>'+
-    '<div class="stat">Articles: <span class="stat-val">'+ua+'</span></div>'+
-    '<div class="stat">Working Numbers: <span class="stat-val">'+uw+'</span></div>';
-}
-function renderSStats(){
-  var posN=filteredS.filter(function(r){return r.rNorm!==null&&r.rNorm>0;}).length;
-  var negN=filteredS.filter(function(r){return r.rNorm!==null&&r.rNorm<0;}).length;
-  var posS=filteredS.filter(function(r){return r.rSpd!==null&&r.rSpd>0;}).length;
-  var negS=filteredS.filter(function(r){return r.rSpd!==null&&r.rSpd<0;}).length;
-  document.getElementById('s-stats').innerHTML=
-    '<div class="stat">Styles: <span class="stat-val">'+filteredS.length.toLocaleString()+'</span> of '+summaryData.length.toLocaleString()+'</div>'+
-    '<div class="stat">Normal OK: <span class="stat-val" style="color:#a5d6a7">'+posN+'</span></div>'+
-    '<div class="stat">Normal Critical: <span class="stat-val" style="color:#ef9a9a">'+negN+'</span></div>'+
-    '<div class="stat">Speed OK: <span class="stat-val" style="color:#a5d6a7">'+posS+'</span></div>'+
-    '<div class="stat">Speed Critical: <span class="stat-val" style="color:#ef9a9a">'+negS+'</span></div>';
-}
-
-// ── detail table ──
-function renderDTable(){
-  var start=(dPage-1)*DPAGE;
-  var page=filteredD.slice(start,start+DPAGE);
-  document.getElementById('d-tbody').innerHTML=page.map(function(r){
-    var tc=r.transit!==null?'<td class="c-transit">'+r.transit+'</td>':'<td class="c-na">N/A</td>';
-    var totc=r.tot!==null?'<td>'+r.tot+'</td>':'<td class="c-na">—</td>';
-    return'<tr>'+
-      '<td title="'+esc(r.wn)+'">'+esc(r.wn)+'</td>'+
-      '<td>'+esc(r.t1k)+'</td>'+
-      '<td title="'+esc(r.t1n)+'">'+esc(r.t1n)+'</td>'+
-      '<td>'+esc(r.t1c)+'</td>'+
-      '<td title="'+esc(r.t2n)+'">'+esc(r.t2n)+'</td>'+
-      '<td>'+esc(r.t2c)+'</td>'+
-      '<td>'+esc(r.art)+'</td>'+
-      '<td>'+esc(r.sea)+'</td>'+
-      '<td>'+esc(r.mcd)+'</td>'+
-      '<td title="'+esc(r.mnm)+'">'+esc(r.mnm)+'</td>'+
-      '<td title="'+esc(r.bpn)+'">'+esc(r.bpn)+'</td>'+
-      '<td>'+(r.mLT!==null?r.mLT:'')+'</td>'+
-      '<td>'+(r.sLT!==null?r.sLT:'')+'</td>'+
-      '<td>'+(r.fLT!==null?r.fLT:'')+'</td>'+
-      tc+totc+
-    '</tr>';
-  }).join('');
-  renderPag('d-page',dPage,DPAGE,filteredD.length,'goDP');
-}
-
-// ── summary table ──
-// type: 'normal' (blue) or 'speed' (orange)
-function rcell(v,type){
-  if(v===null)return'<td class="c-na">N/A</td>';
-  var p=type==='speed'?'cs':'cn';
-  var cls=v>=30?p+'-pos':p+'-neg';
-  return'<td class="'+cls+'">'+(v>0?'+':'')+v+'</td>';
-}
-function renderSTable(){
-  var start=(sPage-1)*SPAGE;
-  var page=filteredS.slice(start,start+SPAGE);
-  document.getElementById('s-tbody').innerHTML=page.map(function(r){
-    var tc=r.tDays!==null?'<td class="c-transit">'+r.tDays+'</td>':'<td class="c-na">N/A</td>';
-    return'<tr>'+
-      '<td><strong>'+esc(r.wn)+'</strong></td>'+
-      '<td>'+esc(r.art)+'</td>'+
-      '<td>'+esc(r.sea)+'</td>'+
-      '<td>'+esc(r.mcp)+'</td>'+
-      '<td>'+esc(r.t1k)+'</td>'+
-      '<td>'+esc(r.t1c)+'</td>'+
-      '<td>'+(r.fLT!==null?r.fLT:'')+'</td>'+
-      '<td title="'+esc(r.csup)+'">'+esc(r.csup)+'</td>'+
-      '<td>'+esc(r.ccnt)+'</td>'+
-      '<td>'+(r.mLT!==null?r.mLT:'')+'</td>'+
-      tc+
-      rcell(r.rNorm,'normal')+
-      '<td>'+(r.sLT!==null?r.sLT:'')+'</td>'+
-      rcell(r.rSpd,'speed')+
-    '</tr>';
-  }).join('');
-  renderPag('s-page',sPage,SPAGE,filteredS.length,'goSP');
-}
-
-// ── pagination ──
-function renderPag(cid,cur,ps,total,fn){
-  var tp=Math.ceil(total/ps);
-  var el=document.getElementById(cid);
-  if(tp<=1){el.innerHTML='<span class="pg-info">All '+total.toLocaleString()+' shown</span>';return;}
-  var h='';
-  if(cur>1)h+='<button class="pg-btn" onclick="'+fn+'('+(cur-1)+')">&#8249;</button>';
-  var s=Math.max(1,cur-2),e=Math.min(tp,cur+2);
-  if(s>1)h+='<button class="pg-btn" onclick="'+fn+'(1)">1</button>';
-  if(s>2)h+='<span class="pg-dots">…</span>';
-  for(var p=s;p<=e;p++)h+='<button class="pg-btn'+(p===cur?' active':'')+'" onclick="'+fn+'('+p+')">'+p+'</button>';
-  if(e<tp-1)h+='<span class="pg-dots">…</span>';
-  if(e<tp)h+='<button class="pg-btn" onclick="'+fn+'('+tp+')">'+tp+'</button>';
-  if(cur<tp)h+='<button class="pg-btn" onclick="'+fn+'('+(cur+1)+')">&#8250;</button>';
-  h+='<span class="pg-info">Page '+cur+' of '+tp+' | '+total.toLocaleString()+' items</span>';
-  el.innerHTML=h;
-}
-function goDP(p){dPage=p;renderDTable();window.scrollTo(0,0);}
-function goSP(p){sPage=p;renderSTable();window.scrollTo(0,0);}
-
-// ── export ──
-function exportDetail(){
-  var hdrs=['Working Number','T1 Factory CODE','T1 Factory NAME','T1 Factory Country',
-    'T2 Supplier NAME','T2 Supplier Country','Article','Season',
-    'Material CODE','Material NAME','BOM Part Name',
-    'Material Supplier LT','Speed LT','Factory LT','Transit LT','Total LT'];
-  var rows=filteredD.map(function(r){return[r.wn,r.t1k,r.t1n,r.t1c,r.t2n,r.t2c,r.art,r.sea,r.mcd,r.mnm,r.bpn,r.mLT,r.sLT,r.fLT,r.transit,r.tot];});
-  var ws=XLSX.utils.aoa_to_sheet([hdrs].concat(rows));
-  ws['!cols']=[20,14,28,16,28,16,12,8,14,24,22,12,10,10,10,10].map(function(w){return{wch:w};});
-  var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Detail');
-  XLSX.writeFile(wb,'BOMx_Detail_'+new Date().toISOString().slice(0,10)+'.xlsx');
-}
-function exportSummary(){
-  var hdrs=['Working Number','Article','Season','Model Collection Pack','T1 Factory Code','T1 Country',
-    'Factory LT (days)','Critical Supplier','T2 Country',
-    'Max Mat. LT (days)','Transit LT (days)','Remaining Normal (days)','Speed LT (days)','Remaining Speed (days)'];
-  var rows=filteredS.map(function(r){return[r.wn,r.art,r.sea,r.mcp,r.t1k,r.t1c,r.fLT,r.csup,r.ccnt,r.mLT,r.tDays,r.rNorm,r.sLT,r.rSpd];});
-  var ws=XLSX.utils.aoa_to_sheet([hdrs].concat(rows));
-  ws['!cols']=[22,14,8,20,14,16,10,28,16,14,12,18,10,18].map(function(w){return{wch:w};});
-  var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Production Remaining');
-  XLSX.writeFile(wb,'BOMx_ProductionRemaining_'+new Date().toISOString().slice(0,10)+'.xlsx');
-}
-
-// ── SAVE & PUBLISH ─────────────────────────────────────────────────────
-async function genPublishableFile(){
-  if(!summaryData.length){alert('Please load and process a BOM file first.');return;}
-  var date=new Date().toISOString().slice(0,10);
-  var jdata=JSON.stringify(summaryData)
-    .replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026');
-
-  // Fetch current page source
-  var src;
-  try{
-    var resp=await fetch(location.href,{cache:'no-cache'});
-    if(!resp.ok)throw new Error();
-    src=await resp.text();
-  }catch(e){
-    alert('Cannot reach this page as a URL.\nPlease open from the server: http://192.168.71.138:8501/ or the GitHub Pages URL.');
-    return;
-  }
-
-  // Embed the data
-  src=src.replace(/^var EMBEDDED_DATA = .*$/m,'var EMBEDDED_DATA = '+jdata+';');
-  src=src.replace(/^var EMBEDDED_DATE = '[^']*';/m,"var EMBEDDED_DATE = '"+date+"';");
-
-  var h=location.hostname;
-  var isLocal=(h==='localhost'||h==='127.0.0.1'||h.startsWith('192.168'));
-
-  if(isLocal){
-    // ── Local server: POST directly ──────────────────────────────────
-    try{
-      var saveResp=await fetch('/save',{method:'POST',
-        headers:{'Content-Type':'application/json'},body:JSON.stringify({html:src,filename:'BOMx_Trim_Tool.html'})});
-      if(!saveResp.ok)throw new Error();
-      _pubDone(date,'✅ Published!\n\nColleagues can refresh to see updated results.');
-    }catch(e){
-      alert('Could not save. Make sure the server was started with start_server.bat.');
-    }
-  } else {
-    // ── GitHub Pages: push via GitHub API ───────────────────────────
-    await _pushToGitHub(src,date);
-  }
-}
-
-async function _pushToGitHub(src,date){
-  var OWNER='sopita-123', REPO='Autoupdate', FILE='Bomx Leadtime/BOMx_Trim_Tool.html';
-  var apiUrl='https://api.github.com/repos/'+OWNER+'/'+REPO+'/contents/'+
-    encodeURIComponent(FILE).replace(/%2F/g,'/');
-
-  // Get stored token or prompt for one
-  var pat=localStorage.getItem('gh_pat')||'';
-  if(!pat){
-    pat=prompt(
-      'One-time setup: GitHub token needed to publish.\n\n'+
-      'Steps to create one:\n'+
-      '1. Go to: github.com → Settings → Developer settings\n'+
-      '   → Personal access tokens → Fine-grained tokens → Generate new\n'+
-      '2. Repository access: select "Autoupdate" only\n'+
-      '3. Permissions: Contents → Read and write\n'+
-      '4. Click Generate → copy the token\n\n'+
-      'Paste token here (saved in your browser, not shared):'
-    );
-    if(!pat)return;
-    localStorage.setItem('gh_pat',pat);
-  }
-
-  var headers={'Authorization':'Bearer '+pat,
-    'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'};
-
-  // Get current file SHA (GitHub requires this to update a file)
-  var shaResp=await fetch(apiUrl,{headers:headers});
-  if(shaResp.status===401||shaResp.status===403){
-    localStorage.removeItem('gh_pat');
-    alert('Token invalid or expired. Please click Save & Publish again to enter a new token.');return;
-  }
-  var shaJson=await shaResp.json();
-  var sha=shaJson.sha;
-
-  // Push updated file
-  var content=btoa(unescape(encodeURIComponent(src)));
-  var putResp=await fetch(apiUrl,{method:'PUT',headers:headers,
-    body:JSON.stringify({message:'Publish BOMx results '+date,content:content,sha:sha})});
-
-  if(putResp.ok){
-    _pubDone(date,'✅ Published to GitHub!\n\nColleagues can see updated results in ~1 minute at the shared URL.');
-  } else {
-    var err=await putResp.json();
-    alert('GitHub error: '+(err.message||putResp.status)+'\n\nIf the token expired, click Save & Publish again to re-enter it.');
-    if(putResp.status===401||putResp.status===403)localStorage.removeItem('gh_pat');
-  }
-}
-
-function _pubDone(date,msg){
-  var hdr=document.querySelector('.header p');
-  hdr.textContent=hdr.textContent.replace(/\s*\|\s*Data updated:.*$/,'')+
-    '  |  Data updated: '+date;
-  alert(msg);
-}
-
-// ── GENERATE SHARED PAGE ───────────────────────────────────────────────
-function escH(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-function genSharedPage(){
-  if(!summaryData.length){alert('Please load BOM data first.');return;}
-  var date=new Date().toISOString().slice(0,10);
-  var src=bomFile?bomFile.name:'';
-  // Safely encode JSON so it cannot break the <script> tag
-  var jdata=JSON.stringify(summaryData)
-    .replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026');
-  // Read JS from the template block (no escaping issues)
-  var pubJs=document.getElementById('pub-js-tpl').textContent;
-  var html=buildPubHTML(date,src,jdata,pubJs);
-  var blob=new Blob([html],{type:'text/html;charset=utf-8'});
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='BOMx_Results_'+date+'.html';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-}
-
-function buildPubHTML(date,src,jdata,pubJs){
-  return'<!DOCTYPE html>\n<html lang="en">\n<head>\n'+
-  '<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">\n'+
-  '<title>BOMx Leadtime Results — '+date+'</title>\n'+
-  '<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>\n'+
-  '<style>'+getPubCSS()+'
-  </style></head>\n<body>
-\n'+
-  '<div class="hdr"><div>'+
-  '<div class="h1">BOMx Leadtime — Production Remaining</div>'+
-  '<div class="sub">Remaining garment production days per style — AD4001 Thailand | AD4014 Myanmar</div></div>'+
-  '<div class="gd">Generated: <strong>'+date+'</strong><br><span>'+escH(src)+'</span></div></div>\n'+
-  '<div class="sb" id="sb"></div>\n'+
-  '<div class="fb" style="justify-content:flex-end">'+
-  '<button class="bsm" onclick="clr()">Clear All Filters</button>'+
-  '<button class="bex" onclick="xls()">&#11015; Export to Excel</button></div>\n'+
-  '<div class="lgd">'+
-  '<strong>Colour key: </strong>'+
-  '<span class="li"><span class="ld" style="background:#1565c0;width:16px;border-radius:3px"></span><strong style="color:#1565c0">Remaining — Normal</strong></span>'+
-  '<span class="li"><span class="ld" style="background:#e65100;width:16px;border-radius:3px"></span><strong style="color:#e65100">Remaining — Speed</strong></span>'+
-  '<span style="margin:0 6px;color:#ccc">|</span>'+
-  '<span class="li"><span class="ld" style="background:#bbdefb"></span>Positive (buffer)</span>'+
-  '<span class="li"><span class="ld" style="background:#ffcdd2"></span>Negative (late)</span>'+
-  '<span style="margin-left:8px;color:#888;font-size:11px">Formula: Factory LT − Max Mat. LT − Transit LT</span></div>\n'+
-  '<div class="tw"><table><thead><tr>'+
-  '<th>Working Number<br><input class="th-f" id="sf-wn" type="text" placeholder="Search…" onclick="event.stopPropagation()"></th>'+
-  '<th>Article<br><input class="th-f" id="sf-art" type="text" placeholder="Search…" onclick="event.stopPropagation()"></th>'+
-  '<th>Season<br><select class="th-f" id="sf-sea" onclick="event.stopPropagation()"><option value="">All</option></select></th>'+
-  '<th>Model Collection Pack<br><select class="th-f" id="sf-mcp" onclick="event.stopPropagation()"><option value="">All</option></select></th>'+
-  '<th>T1 Factory Code<br><select class="th-f" id="sf-t1k" onclick="event.stopPropagation()"><option value="">All</option></select></th>'+
-  '<th>T1 Country<br><select class="th-f" id="sf-t1c" onclick="event.stopPropagation()"><option value="">All</option></select></th>'+
-  '<th>Factory LT (days)<br><input class="th-f" id="sf-flt" type="text" placeholder="e.g. &gt;=30"></th>'+
-  '<th>Critical Supplier (longest LT)<br><input class="th-f" id="sf-csup" type="text" placeholder="Search…" onclick="event.stopPropagation()"></th>'+
-  '<th>T2 Country<br><select class="th-f" id="sf-t2c" onclick="event.stopPropagation()"><option value="">All</option></select></th>'+
-  '<th>Max Mat. LT (days)<br><input class="th-f" id="sf-mlt" type="text" placeholder="e.g. &gt;=30"></th>'+
-  '<th>Transit LT (days)<br><input class="th-f" id="sf-tlt" type="text" placeholder="e.g. &gt;=10"></th>'+
-  '<th class="thn">Remaining — Normal (days)<br><input class="th-f" id="sf-rnorm" type="text" placeholder="e.g. &lt;0"></th>'+
-  '<th>Speed LT (days)<br><input class="th-f" id="sf-slt" type="text" placeholder="e.g. &gt;=20"></th>'+
-  '<th class="ths">Remaining — Speed (days)<br><input class="th-f" id="sf-rspd" type="text" placeholder="e.g. &lt;0"></th>'+
-  '</tr></thead><tbody id="tb"></tbody></table></div>\n'+
-  '<div class="pgn" id="pgn"></div>\n'+
-  '<div class="ft">BOMx Leadtime Tool &nbsp;|&nbsp; Generated: '+date+' &nbsp;|&nbsp; Source: '+escH(src)+'</div>\n'+
-  '<script>\nvar D='+jdata+';\n'+pubJs+'\n<\/script>\n</body>\n</html>';
-}
-
-function getPubCSS(){
-  return '*{box-sizing:border-box;margin:0;padding:0}'+
-  'body{font-family:Segoe UI,Arial,sans-serif;background:#f0f2f5;color:#333;font-size:14px}'+
-  '.hdr{background:linear-gradient(135deg,#1a237e,#283593);color:#fff;padding:18px 28px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.2)}'+
-  '.h1{font-size:22px;font-weight:700}.sub{font-size:13px;opacity:.75;margin-top:3px}'+
-  '.gd{font-size:12px;opacity:.8;text-align:right;line-height:1.6}'+
-  '.sb{background:#283593;color:#fff;padding:10px 20px;display:flex;flex-wrap:wrap;gap:24px;font-size:13px}'+
-  '.st{display:flex;gap:6px;align-items:center}.sv{font-weight:700;font-size:15px}'+
-  '.fb{background:#fff;padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;border-bottom:1px solid #e8eaf6}'+
-  '.fg{display:flex;flex-direction:column;gap:3px}'+
-  '.fg label{font-size:11px;color:#888;font-weight:600;text-transform:uppercase}'+
-  '.fg input,.fg select{padding:6px 10px;border:1px solid #dde1f0;border-radius:5px;font-size:13px;min-width:140px;background:#fafbff}'+
-  '.fg input:focus,.fg select:focus{outline:none;border-color:#3949ab;background:#fff}'+
-  '.bsm{padding:6px 14px;border-radius:5px;font-size:13px;cursor:pointer;font-weight:600;border:1px solid #dde1f0;background:#fff}'+
-  '.bsm:hover{background:#f0f2ff}'+
-  '.bex{padding:7px 18px;background:#2e7d32;color:#fff;border:none;border-radius:5px;font-size:13px;font-weight:700;cursor:pointer;margin-left:auto}'+
-  '.bex:hover{background:#388e3c}'+
-  '.lgd{padding:8px 16px;background:#fafafe;border-bottom:1px solid #e8eaf6;font-size:12px;color:#666;display:flex;gap:14px;flex-wrap:wrap;align-items:center}'+
-  '.li{display:flex;align-items:center;gap:5px}.ld{width:12px;height:12px;border-radius:2px;display:inline-block}'+
-  '.tw{overflow-x:auto;background:#fff}'+
-  'table{width:100%;border-collapse:collapse;font-size:12px}'+
-  'thead th{background:#283593;color:#fff;padding:9px 11px;text-align:left;white-space:nowrap;font-size:11.5px;font-weight:700;position:sticky;top:0;z-index:2}'+
-  '.th-f{display:block;margin-top:5px;width:100%;padding:3px 6px;border:1px solid rgba(255,255,255,0.3);border-radius:3px;font-size:11px;background:rgba(255,255,255,0.15);color:#fff;font-weight:normal;box-sizing:border-box;min-width:0}'+
-  '.th-f::placeholder{color:rgba(255,255,255,0.55)}'+
-  '.th-f option{color:#333;background:#fff}'+
-  'tbody td{padding:6px 11px;border-bottom:1px solid #f0f0f8;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis}'+
-  'tbody tr:hover td{background:#ede7f6!important}'+
-  'tbody tr:nth-child(even) td{background:#fafafe}'+
-  '.ct{color:#0277bd;font-weight:600}.na{color:#bdbdbd;font-style:italic}'+
-  '.thn{background:#1565c0!important;border-left:3px solid #82b1ff}'+
-  '.cn-pos{color:#0d47a1;background:#bbdefb!important;font-weight:700}'+
-  '.cn-zero{color:#1565c0;background:#e3f2fd!important;font-weight:700}'+
-  '.cn-neg{color:#b71c1c;background:#ffcdd2!important;font-weight:700}'+
-  '.ths{background:#e65100!important;border-left:3px solid #ffcc80}'+
-  '.cs-pos{color:#bf360c;background:#ffe0b2!important;font-weight:700}'+
-  '.cs-zero{color:#e65100;background:#fff3e0!important;font-weight:700}'+
-  '.cs-neg{color:#b71c1c;background:#ffcdd2!important;font-weight:700}'+
-  '.pgn{display:flex;align-items:center;gap:6px;padding:12px 16px;background:#fff;border-top:1px solid #e8eaf6;flex-wrap:wrap}'+
-  '.pb{padding:4px 10px;border:1px solid #c5cae9;border-radius:4px;background:#fff;cursor:pointer;font-size:13px;min-width:32px;text-align:center}'+
-  '.pb:hover:not(.act){background:#e8eaf6}.act{background:#1a237e;color:#fff;border-color:#1a237e;font-weight:700}'+
-  '.dots{color:#aaa;padding:0 2px}.pi{font-size:12px;color:#888;margin-left:auto}'+
-  '.ft{text-align:center;padding:16px;font-size:12px;color:#aaa;background:#fff;border-top:1px solid #e8eaf6;margin-top:2px}';
-}
-
-// ── ADMIN: Login ───────────────────────────────────────────────────────
-// Credentials stored as reversed+encoded strings to avoid plain-text visibility
-var _u = atob('c29waXRhLnZh');   // 'sopita.va'
-var _p = atob('MQ==');            // '1'
-
-function openLogin(){
-  document.getElementById('login-user').value='';
-  document.getElementById('login-pw').value='';
-  document.getElementById('login-err').style.display='none';
-  document.getElementById('login-modal').classList.add('open');
-  setTimeout(function(){ document.getElementById('login-user').focus(); }, 100);
-}
-
-function closeLogin(){
-  document.getElementById('login-modal').classList.remove('open');
-}
-
-function doLogin(){
-  var u=document.getElementById('login-user').value.trim();
-  var p=document.getElementById('login-pw').value;
-  if(u===_u && p===_p){
-    closeLogin();
-    localStorage.setItem('bomx_admin','c29waXRhLnZhOjE=');
-    document.getElementById('tbtn-detail').style.display='';
-    document.getElementById('btn-edit-transit').style.display='';
-    document.querySelector('.btn-admin').textContent='🔓 Admin';
-  } else {
-    document.getElementById('login-err').style.display='block';
-    document.getElementById('login-pw').value='';
-    document.getElementById('login-pw').focus();
-  }
-}
-
-// ── ADMIN: Transit Editor ─────────────────────────────────────────────
-var TRANSIT_ROUTES = [
-  {key:'myanmar|cambodia',  dest:'Myanmar',  coo:'Cambodia'},
-  {key:'myanmar|china',     dest:'Myanmar',  coo:'China (all ports)'},
-  {key:'myanmar|hong kong', dest:'Myanmar',  coo:'Hong Kong'},
-  {key:'myanmar|taiwan',    dest:'Myanmar',  coo:'Taiwan (all ports)'},
-  {key:'myanmar|thailand',  dest:'Myanmar',  coo:'Thailand'},
-  {key:'myanmar|vietnam',   dest:'Myanmar',  coo:'Vietnam (all ports)'},
-  {key:'thailand|cambodia', dest:'Thailand', coo:'Cambodia'},
-  {key:'thailand|china',    dest:'Thailand', coo:'China (all ports)'},
-  {key:'thailand|hong kong',dest:'Thailand', coo:'Hong Kong'},
-  {key:'thailand|indonesia',dest:'Thailand', coo:'Indonesia'},
-  {key:'thailand|japan',    dest:'Thailand', coo:'Japan'},
-  {key:'thailand|sri lanka',dest:'Thailand', coo:'Sri Lanka'},
-  {key:'thailand|taiwan',   dest:'Thailand', coo:'Taiwan (all ports)'},
-  {key:'thailand|vietnam',  dest:'Thailand', coo:'Vietnam (all ports)'},
-  {key:'thailand|thailand', dest:'Thailand', coo:'Thailand (domestic)'}
-];
-
-function openTE(){
-  var tbody=document.getElementById('te-tbody');
-  tbody.innerHTML=TRANSIT_ROUTES.map(function(r,i){
-    var val=transitLookup.hasOwnProperty(r.key)?transitLookup[r.key]:'';
-    return'<tr><td class="te-dest">'+r.dest+'</td><td>'+r.coo+'</td>'+
-      '<td><input class="te-input" type="number" min="1" max="999" id="te-row-'+i+'" value="'+val+'"></td></tr>';
-  }).join('');
-  document.getElementById('te-saved').style.display='none';
-  document.getElementById('te-modal').classList.add('open');
-}
-
-function closeTE(){
-  document.getElementById('te-modal').classList.remove('open');
-}
-
-function applyTE(){
-  TRANSIT_ROUTES.forEach(function(r,i){
-    var inp=document.getElementById('te-row-'+i);
-    var v=parseFloat(inp.value);
-    if(!isNaN(v) && v>0) transitLookup[r.key]=v;
-  });
-  if(allData.length){
-    allData.forEach(function(r){
-      var tKey=normC(r.t1c)+'|'+normC(r.t2c);
-      r.transit=transitLookup.hasOwnProperty(tKey)?transitLookup[tKey]:null;
-      r.tot=(r.mLT!==null&&r.fLT!==null&&r.transit!==null)?(r.mLT+r.transit+r.fLT):((r.mLT!==null&&r.fLT!==null)?(r.mLT+r.fLT):null);
-    });
-    summaryData=buildSummary();
-    populateDDs();
-    applyD(); applyS();
-    document.getElementById('te-saved').textContent='✓ Changes applied';
-  } else {
-    document.getElementById('te-saved').textContent='✓ Saved — upload a BOM file to recalculate results';
-  }
-  document.getElementById('te-saved').style.display='block';
-}
-</script>
-
-<!-- Public shared-page JS template — read by genSharedPage(), injected into generated HTML -->
-<script type="text/x-template" id="pub-js-tpl">
-var F=[],pg=1,PS=50,tm=null;
-function fs(id,vals){
-  var s=document.getElementById(id);
-  var seen={};
-  vals.filter(Boolean).forEach(function(v){seen[v]=1;});
-  Object.keys(seen).sort().forEach(function(v){
-    var o=document.createElement('option');o.value=o.textContent=v;s.appendChild(o);
-  });
-}
-fs('sf-t1k',D.map(function(r){return r.t1k;}));
-fs('sf-sea',D.map(function(r){return r.sea;}));
-fs('sf-mcp',D.map(function(r){return r.mcp;}));
-fs('sf-t1c',D.map(function(r){return r.t1c;}));
-fs('sf-t2c',D.map(function(r){return r.ccnt;}));
-['sf-wn','sf-art','sf-flt','sf-csup','sf-mlt','sf-tlt','sf-rnorm','sf-slt','sf-rspd'].forEach(function(id){
-  document.getElementById(id).addEventListener('input',function(){clearTimeout(tm);tm=setTimeout(af,300);});
-});
-['sf-t1k','sf-sea','sf-mcp','sf-t1c','sf-t2c'].forEach(function(id){document.getElementById(id).addEventListener('change',af);});
-function mn(val,f){
-  if(val===null||val===undefined)return false;
-  var n=parseFloat(val);if(isNaN(n))return false;
-  f=f.trim();
-  if(f.startsWith('>='))return n>=parseFloat(f.slice(2));
-  if(f.startsWith('<='))return n<=parseFloat(f.slice(2));
-  if(f.startsWith('>'))return n>parseFloat(f.slice(1));
-  if(f.startsWith('<'))return n<parseFloat(f.slice(1));
-  if(f.startsWith('='))return n===parseFloat(f.slice(1));
-  return String(n).includes(f);
-}
-function af(){
-  var t1k =document.getElementById('sf-t1k').value;
-  var sea =document.getElementById('sf-sea').value;
-  var mcp =document.getElementById('sf-mcp').value;
-  var t1c =document.getElementById('sf-t1c').value;
-  var t2c =document.getElementById('sf-t2c').value;
-  var wn  =document.getElementById('sf-wn').value.toLowerCase();
-  var art =document.getElementById('sf-art').value.toLowerCase();
-  var csup=document.getElementById('sf-csup').value.toLowerCase();
-  var flt =document.getElementById('sf-flt').value.trim();
-  var mlt =document.getElementById('sf-mlt').value.trim();
-  var tlt =document.getElementById('sf-tlt').value.trim();
-  var rnorm=document.getElementById('sf-rnorm').value.trim();
-  var slt =document.getElementById('sf-slt').value.trim();
-  var rspd=document.getElementById('sf-rspd').value.trim();
-  F=D.filter(function(r){
-    if(t1k&&r.t1k!==t1k)return false;
-    if(sea&&r.sea!==sea)return false;
-    if(mcp&&r.mcp!==mcp)return false;
-    if(t1c&&r.t1c!==t1c)return false;
-    if(t2c&&r.ccnt!==t2c)return false;
-    if(wn&&!r.wn.toLowerCase().includes(wn))return false;
-    if(art&&!String(r.art||'').toLowerCase().includes(art))return false;
-    if(csup&&!String(r.csup||'').toLowerCase().includes(csup))return false;
-    if(flt&&!mn(r.fLT,flt))return false;
-    if(mlt&&!mn(r.mLT,mlt))return false;
-    if(tlt&&!mn(r.tDays,tlt))return false;
-    if(rnorm&&!mn(r.rNorm,rnorm))return false;
-    if(slt&&!mn(r.sLT,slt))return false;
-    if(rspd&&!mn(r.rSpd,rspd))return false;
-    return true;
-  });
-  pg=1;rs();re();
-}
-function clr(){
-  ['sf-wn','sf-art','sf-flt','sf-csup','sf-mlt','sf-tlt','sf-rnorm','sf-slt','sf-rspd'].forEach(function(id){document.getElementById(id).value='';});
-  ['sf-t1k','sf-sea','sf-mcp','sf-t1c','sf-t2c'].forEach(function(id){document.getElementById(id).value='';});
-  af();
-}
-function e(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function rc(v,type){
-  if(v===null)return '<td class="na">N/A</td>';
-  var p=type==='speed'?'cs':'cn';
-  var cls=v>=30?p+'-pos':p+'-neg';
-  return '<td class="'+cls+'">'+(v>0?'+':'')+v+'</td>';
-}
-function rs(){
-  var pN=F.filter(function(r){return r.rNorm>0;}).length;
-  var nN=F.filter(function(r){return r.rNorm!==null&&r.rNorm<0;}).length;
-  var pS=F.filter(function(r){return r.rSpd>0;}).length;
-  var nS=F.filter(function(r){return r.rSpd!==null&&r.rSpd<0;}).length;
-  document.getElementById('sb').innerHTML=
-    '<div class="st">Styles: <span class="sv">'+F.length.toLocaleString()+'</span> of '+D.length.toLocaleString()+'</div>'+
-    '<div class="st">Normal OK: <span class="sv" style="color:#a5d6a7">'+pN+'</span></div>'+
-    '<div class="st">Normal Critical: <span class="sv" style="color:#ef9a9a">'+nN+'</span></div>'+
-    '<div class="st">Speed OK: <span class="sv" style="color:#a5d6a7">'+pS+'</span></div>'+
-    '<div class="st">Speed Critical: <span class="sv" style="color:#ef9a9a">'+nS+'</span></div>';
-}
-function re(){
-  var st=(pg-1)*PS,rws=F.slice(st,st+PS);
-  document.getElementById('tb').innerHTML=rws.map(function(r){
-    var tc=r.tDays!==null?'<td class="ct">'+r.tDays+'</td>':'<td class="na">N/A</td>';
-    return '<tr>'+
-      '<td><strong>'+e(r.wn)+'</strong></td>'+
-      '<td>'+e(r.art)+'</td>'+
-      '<td>'+e(r.sea)+'</td>'+
-      '<td>'+e(r.mcp)+'</td>'+
-      '<td>'+e(r.t1k)+'</td>'+
-      '<td>'+e(r.t1c)+'</td>'+
-      '<td>'+(r.fLT!==null?r.fLT:'')+'</td>'+
-      '<td>'+e(r.csup)+'</td>'+
-      '<td>'+e(r.ccnt)+'</td>'+
-      '<td>'+(r.mLT!==null?r.mLT:'')+'</td>'+
-      tc+
-      rc(r.rNorm,'normal')+
-      '<td>'+(r.sLT!==null?r.sLT:'')+'</td>'+
-      rc(r.rSpd,'speed')+
-      '</tr>';
-  }).join('');
-  rp();
-}
-function rp(){
-  var tp=Math.ceil(F.length/PS),el=document.getElementById('pgn');
-  if(tp<=1){el.innerHTML='<span class="pi">All '+F.length+' shown</span>';return;}
-  var h='',s=Math.max(1,pg-2),en=Math.min(tp,pg+2);
-  if(pg>1)h+='<button class="pb" onclick="go('+(pg-1)+')">&#8249;</button>';
-  if(s>1)h+='<button class="pb" onclick="go(1)">1</button>';
-  if(s>2)h+='<span class="dots">&#8230;</span>';
-  for(var p=s;p<=en;p++)h+='<button class="pb'+(p===pg?' act':'')+'" onclick="go('+p+')">'+p+'</button>';
-  if(en<tp-1)h+='<span class="dots">&#8230;</span>';
-  if(en<tp)h+='<button class="pb" onclick="go('+tp+')">'+tp+'</button>';
-  if(pg<tp)h+='<button class="pb" onclick="go('+(pg+1)+')">&#8250;</button>';
-  h+='<span class="pi">Page '+pg+' of '+tp+' | '+F.length.toLocaleString()+' styles</span>';
-  el.innerHTML=h;
-}
-function go(p){pg=p;re();window.scrollTo(0,0);}
-function xls(){
-  var h=['Working Number','Article','Season','Model Collection Pack','T1 Factory','T1 Country','Factory LT','Critical Supplier','T2 Country','Max Mat. LT','Transit LT','Remaining Normal','Speed LT','Remaining Speed'];
-  var rws=F.map(function(r){return[r.wn,r.art,r.sea,r.mcp,r.t1k,r.t1c,r.fLT,r.csup,r.ccnt,r.mLT,r.tDays,r.rNorm,r.sLT,r.rSpd];});
-  var ws=XLSX.utils.aoa_to_sheet([h].concat(rws));
-  ws['!cols']=[22,14,8,20,14,16,10,28,16,14,12,18,10,18].map(function(w){return{wch:w};});
-  var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Results');
-  XLSX.writeFile(wb,'BOMx_Results_'+new Date().toISOString().slice(0,10)+'.xlsx');
-}
-</script>
-</body>
-</html>
